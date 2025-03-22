@@ -1,4 +1,4 @@
-use rand::distributions::{Alphanumeric, DistString};
+use rand::distr::{Alphanumeric, SampleString};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -19,7 +19,7 @@ pub fn run() {
 }
 
 #[tauri::command]
-fn my_custom_command() -> String {
-  let mut rng = rand::thread_rng();
-  Alphanumeric.sample_string(&mut rng, 32)
+fn my_custom_command(num: usize) -> String {
+  let mut rng = rand::rng();
+  Alphanumeric.sample_string(&mut rng, num)
 }
