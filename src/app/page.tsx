@@ -10,8 +10,8 @@ export default function Home() {
 
   return (
     <div>
-      <div>
-        <p className='break-words'>Hello from {message}</p>
+      <div className="mb-4">
+        <p className="break-words">Hello from Rust: {message}</p>
         <button
           onClick={fetchMessage}
           onLoad={fetchMessage}
@@ -20,7 +20,8 @@ export default function Home() {
           Call Rust Command
         </button>
       </div>
-      <div style={{ width: '100%', height: 400 }}>
+      {/* スマートフォンサイズの場合は全幅、大きな画面の場合は横幅の70% */}
+      <div className="w-full md:w-[70%] h-96">
         <ResponsiveContainer>
           <LineChart
             data={chartData}
