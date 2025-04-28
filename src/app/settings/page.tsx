@@ -127,8 +127,7 @@ export default function CardWithForm() {
         </CardContent>
 
         <CardFooter className="flex justify-between mt-4">
-          <Button variant="outline">Cancel</Button>
-          <Button type="submit">Update</Button>
+          <Button type="submit" className="cursor-pointer">Update</Button>
         </CardFooter>
       </form>
     </Card>
