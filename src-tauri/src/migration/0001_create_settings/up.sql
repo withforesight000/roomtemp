@@ -1,4 +1,5 @@
 CREATE TABLE IF NOT EXISTS settings (
-    key TEXT PRIMARY KEY,
-    value TEXT NOT NULL
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    url TEXT,
+    access_token TEXT NOT NULL
 );

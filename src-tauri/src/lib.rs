@@ -2,10 +2,11 @@ mod domain;
 mod usecase;
 mod repository;
 mod controller;
+mod pb;
 mod presentation;
 mod infrastructure;
 
-use presentation::commands::{my_custom_command, get_setting_command, set_setting_command};
+use presentation::commands::{my_custom_command, get_settings, set_settings};
 use infrastructure::db::{establish_connection_pool, run_migrations, AppState};
 use tauri::Manager as _;
 
@@ -30,8 +31,7 @@ pub fn run() {
             }
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![my_custom_command, get_setting_command, set_setting_command])
+        .invoke_handler(tauri::generate_handler![my_custom_command, get_settings, set_settings])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
-

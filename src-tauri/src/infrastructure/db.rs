@@ -12,7 +12,7 @@ pub struct AppState {
     pub pool: DbPool,
 }
 
-// Tauri の tauri::generate_handler! マクロ経由で実際には使われている
+// Tauri の tauri::Builder::default().setup() に渡すクロージャ内で実際には使われている
 /// embed_migrations! マクロで、migrations 配下のマイグレーションを組み込みます。
 #[allow(dead_code)]
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("src/migration");

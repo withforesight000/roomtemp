@@ -1,4 +1,4 @@
-use crate::domain::settings::Setting;
+use crate::domain::settings::Settings;
 use crate::repository::diesel_settings_repository::DieselSettingsRepository;
 use crate::usecase::settings;
 
@@ -13,14 +13,14 @@ impl<'a> SettingsController<'a> {
     }
 
     /// 設定の取得（キーに対応する値を返す）
-    pub fn get(&mut self, key: String) -> Result<Option<String>, String> {
-        let setting = settings::get_setting(self.repo, &key)?;
-        Ok(setting.map(|s| s.value))
+    pub fn get(&mut self) -> Result<Option<Settings>, String> {
+        let setting = settings::get_setting(self.repo)?;
+        Ok(setting)
     }
 
     /// 設定の更新
-    pub fn set(&mut self, key: String, value: String) -> Result<(), String> {
-        let setting = Setting { key, value };
+    pub fn set(&mut self, url: String, access_token: String) -> Result<(), String> {
+        let setting = Settings { url, access_token };
         settings::set_setting(self.repo, setting)
     }
 }

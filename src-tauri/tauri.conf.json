@@ -1,8 +1,8 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "test-tauri",
+  "productName": "roomtemp",
   "version": "0.1.0",
-  "identifier": "net.withforesight.test-tauri",
+  "identifier": "net.withforesight.roomtemp",
   "build": {
     "frontendDist": "../out",
     "devUrl": "http://localhost:3000",
@@ -12,9 +12,9 @@
   "app": {
     "windows": [
       {
-        "title": "test-tauri",
-        "width": 800,
-        "height": 600,
+        "title": "roomtemp",
+        "width": 1024,
+        "height": 768,
         "resizable": true,
         "fullscreen": false
       }
