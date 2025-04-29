@@ -8,7 +8,7 @@ pub struct TempgrpcdRequest {
     #[prost(uint64, tag = "3")]
     pub end_time: u64,
 }
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, ::prost::Message, serde::Serialize)]
 pub struct TempgrpcdResponse {
     #[prost(uint32, tag = "1")]
     pub version: u32,
@@ -18,7 +18,7 @@ pub struct TempgrpcdResponse {
         AmbientCondition,
     >,
 }
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+#[derive(Clone, Copy, PartialEq, ::prost::Message, serde::Serialize)]
 pub struct AmbientCondition {
     #[prost(float, tag = "1")]
     pub temperature: f32,

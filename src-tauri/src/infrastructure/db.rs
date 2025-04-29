@@ -6,12 +6,6 @@ use tauri::{AppHandle, Manager as _};
 
 pub type DbPool = Pool<ConnectionManager<SqliteConnection>>;
 
-/// アプリケーション全体で共有する状態
-#[derive(Clone)]
-pub struct AppState {
-    pub pool: DbPool,
-}
-
 // Tauri の tauri::Builder::default().setup() に渡すクロージャ内で実際には使われている
 /// embed_migrations! マクロで、migrations 配下のマイグレーションを組み込みます。
 #[allow(dead_code)]

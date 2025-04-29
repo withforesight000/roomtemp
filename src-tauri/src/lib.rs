@@ -1,14 +1,21 @@
-mod domain;
-mod usecase;
-mod repository;
+mod app_state;
 mod controller;
+mod domain;
+mod infrastructure;
 mod pb;
 mod presentation;
-mod infrastructure;
+mod repository;
+mod usecase;
 
-use presentation::commands::{my_custom_command, get_settings, set_settings};
-use infrastructure::db::{establish_connection_pool, run_migrations, AppState};
+use std::sync::Arc;
+
+use app_state::AppState;
+use infrastructure::db::{establish_connection_pool, run_migrations};
+use presentation::commands::{
+    connect_to_grpc_server, get_graph_data, get_settings, my_custom_command, set_settings,
+};
 use tauri::Manager as _;
+use tokio::sync::Mutex;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -19,7 +26,10 @@ pub fn run() {
             // マイグレーションの実行
             run_migrations(&pool);
             // アプリ全体で共有する状態として登録
-            let state = AppState { pool };
+            let state = AppState {
+                pool,
+                grpc_connection: Arc::new(Mutex::new(None)),
+            };
             app.manage(state);
 
             if cfg!(debug_assertions) {
@@ -31,7 +41,13 @@ pub fn run() {
             }
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![my_custom_command, get_settings, set_settings])
+        .invoke_handler(tauri::generate_handler![
+            my_custom_command,
+            get_settings,
+            set_settings,
+            connect_to_grpc_server,
+            get_graph_data
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
