@@ -20,7 +20,7 @@ impl<'a> SettingsController<'a> {
 
     /// 設定の更新
     pub fn set(&mut self, url: String, access_token: String) -> Result<(), String> {
-        let setting = Settings { url, access_token };
+        let setting = Settings { id: 1, url, access_token };
         settings::set_setting(self.repo, setting)
     }
 }

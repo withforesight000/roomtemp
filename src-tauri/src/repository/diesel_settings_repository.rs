@@ -53,6 +53,7 @@ impl SettingsRepository for DieselSettingsRepository {
             .map_err(|e| e.to_string())?;
         if let Some(entity) = result {
             Ok(Some(Settings {
+                id: entity.id,
                 url: entity.url,
                 access_token: entity.access_token,
             }))
@@ -67,6 +68,7 @@ impl SettingsRepository for DieselSettingsRepository {
                 .map_err(|e| e.to_string())?;
 
             Ok(Some(Settings {
+                id: 1,
                 url: "".to_string(),
                 access_token: "".to_string(),
             }))
