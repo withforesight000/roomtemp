@@ -1,36 +1,64 @@
 "use client";
 
 import { Check, X } from "lucide-react"
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { useMessage } from "@/hooks/useMessage";
-import { chartData } from "@/data/chartData";
 import { invoke } from '@tauri-apps/api/core';
 import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
 } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 
+const UnknownError = "Unknown error";
+
+type State = {
+  connectivityStatus: boolean
+  graphData?: Object
+  info?: string
+}
+
+function stateReducer(state: State, action: { type: string; payload: { connectivityStatus?: boolean; graphData?: Object; info?: string } }): State {
+  switch (action.type) {
+    case "SET_CONNECTIVITY_STATUS":
+      if (action.payload.connectivityStatus === undefined) {
+        return state;
+      }
+
+      return { ...state, connectivityStatus: action.payload.connectivityStatus }
+    case "SET_GRAPH_DATA":
+      if (action.payload.graphData === undefined) {
+        return state;
+      }
+
+      return { ...state, graphData: action.payload.graphData }
+    case "SET_INFO":
+      return { ...state, info: action.payload.info }
+    default:
+      return state
+  }
+}
 
 export default function Home() {
-  const { message, fetchMessage } = useMessage(32);
-  const [connectivityStatus, setConnectivityStatus] = React.useState(false);
-  const [graphData, setGraphData] = React.useState<Object>(chartData);
+  const [state, dispatch] = React.useReducer(stateReducer, {
+    connectivityStatus: false,
+    graphData: undefined,
+    info: undefined,
+  } as State);
 
-  const connectToGrpcServer = async (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.preventDefault();
+  useEffect(() => {
+    connectToGrpcServer();
+  }, []);
+
+  const connectToGrpcServer = async () => {
     try {
       const response = await invoke('connect_to_grpc_server');
-      console.log(response);
-      setConnectivityStatus(true);
+      dispatch({ type: "SET_CONNECTIVITY_STATUS", payload: { connectivityStatus: true } });
+      dispatch({ type: "SET_INFO", payload: { info: response !== undefined ? response as string : UnknownError } });
     } catch (error: unknown) {
       console.error("Error connecting to gRPC server:", error);
+      dispatch({ type: "SET_INFO", payload: { info: error instanceof Error ? error.message : UnknownError } });
     }
   };
 
@@ -38,10 +66,13 @@ export default function Home() {
     e.preventDefault();
     try {
       const response: Object = await invoke('get_graph_data');
-      console.log(response);
-      setGraphData(response);
-    } catch (error: unknown) {
-      console.error("Error fetching graph data:", error);
+      dispatch({ type: "SET_GRAPH_DATA", payload: { graphData: response } });
+    } catch (error: any) {
+      if (error instanceof Error) {
+        dispatch({ type: "SET_INFO", payload: { info: error.message } });
+      } else {
+        dispatch({ type: "SET_INFO", payload: { info: UnknownError } });
+      }
     }
   };
 
@@ -49,13 +80,13 @@ export default function Home() {
   const formattedData = useMemo(() => {
     // ambient_conditions プロパティがない or 空なら空配列を返す
     if (
-      typeof graphData !== 'object' ||
-      graphData === null ||
-      !('ambient_conditions' in graphData)
+      typeof state.graphData !== 'object' ||
+      state.graphData === null ||
+      !('ambient_conditions' in state.graphData)
     ) {
       return [];
     }
-    const ambient = (graphData as any).ambient_conditions as Record<
+    const ambient = (state.graphData as any).ambient_conditions as Record<
       string,
       { temperature: number; humidity: number; illumination: number }
     >;
@@ -70,7 +101,7 @@ export default function Home() {
         };
       })
       .sort((a, b) => a.time.localeCompare(b.time));
-  }, [graphData]);
+  }, [state.graphData]);
 
   return (
     <div>
@@ -79,12 +110,25 @@ export default function Home() {
           <div className="flex flex-col w-full gap-4">
             <Label htmlFor="name">1. Connect to gRPC Server</Label>
             <div className='flex flex-row justify-between space-x-2'>
-              <Button className="cursor-pointer" onClick={connectToGrpcServer}>Connect To gRPC Server</Button>
+              <Button
+                className="cursor-pointer"
+                type="button"
+                onClick={connectToGrpcServer}
+              >
+                Connect To gRPC Server
+              </Button>
               <div className="flex items-center space-x-2">
                 <p>status: </p>
-                {connectivityStatus === true ? <Check className="h-4 w-4 text-green-500" /> : <X className="h-4 w-4 text-red-500" />}
+                {state.connectivityStatus === true ? (
+                  <Check className="h-4 w-4 text-green-500" />
+                ) : (
+                  <X className="h-4 w-4 text-red-500" />
+                )}
               </div>
             </div>
+              <div className="flex justify-end">
+                <p>status info: {state.info}</p>
+              </div>
             <Label htmlFor="name">2. Get the graph data</Label>
             <div className='flex flex-row justify-between space-x-2'>
               <Button className="cursor-pointer" onClick={fetchGraphData}>Get Graph Data</Button>

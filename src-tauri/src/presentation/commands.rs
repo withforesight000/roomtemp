@@ -40,11 +40,21 @@ pub fn set_settings(
 pub async fn connect_to_grpc_server(state: State<'_, AppState>) -> Result<String, String> {
     let settings = get_settings(state.clone())?;
 
+    if settings.url.is_empty() || settings.access_token.is_empty() {
+        return Err("URL or access token is empty".into());
+    }
+
+    if state.grpc_connection.lock().await.is_some() {
+        return Ok("Already connected to gRPC server".into());
+    }
+
     let client = grpc_client::new(&settings.url, &settings.access_token)
         .await
-        .expect("Failed to connect to gRPC server");
+        .map_err(|e| format!("Failed to create gRPC client: {}", e))?;
+
     let mut guard = state.grpc_connection.lock().await;
     *guard = Some(client);
+
     Ok("Connected to gRPC server".into())
 }
 
