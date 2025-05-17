@@ -81,10 +81,3 @@ pub async fn get_graph_data(
         .map_err(|e| e.to_string())?;
     Ok(resp.into_inner())
 }
-
-#[allow(dead_code)]
-#[tauri::command]
-pub fn my_custom_command(num: usize) -> String {
-    let mut rng = rand::rng();
-    Alphanumeric.sample_string(&mut rng, num)
-}
