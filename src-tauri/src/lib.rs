@@ -12,7 +12,7 @@ use std::sync::Arc;
 use app_state::AppState;
 use infrastructure::db::{establish_connection_pool, run_migrations};
 use presentation::commands::{
-    connect_to_grpc_server, get_graph_data, get_settings, my_custom_command, set_settings,
+    connect_to_grpc_server, get_graph_data, get_settings, set_settings,
 };
 use tauri::Manager as _;
 use tokio::sync::Mutex;
@@ -42,7 +42,6 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            my_custom_command,
             get_settings,
             set_settings,
             connect_to_grpc_server,

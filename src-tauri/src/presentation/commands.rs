@@ -1,4 +1,3 @@
-use rand::distr::{Alphanumeric, SampleString};
 use tauri::State;
 
 use crate::app_state::AppState;
@@ -62,6 +61,8 @@ pub async fn connect_to_grpc_server(state: State<'_, AppState>) -> Result<String
 #[tauri::command]
 pub async fn get_graph_data(
     state: State<'_, AppState>,
+    start_time: u64,
+    end_time: u64,
 ) -> Result<pb::tempgrpcd::TempgrpcdResponse, String> {
     let mut client = {
         let guard = state.grpc_connection.lock().await;
@@ -74,8 +75,8 @@ pub async fn get_graph_data(
     let resp = client
         .get_ambient_conditions(tonic::Request::new(TempgrpcdRequest {
             version: 1,
-            start_time: 1745846391385,
-            end_time: 1745957391385,
+            start_time,
+            end_time,
         }))
         .await
         .map_err(|e| e.to_string())?;

@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, X } from "lucide-react"
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useReducer, useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { invoke } from '@tauri-apps/api/core';
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import {
   Card,
   CardContent,
 } from "@/components/ui/card"
+import { DateTimePicker } from '@/components/ui/expansions/datetime-picker';
 import { Label } from "@/components/ui/label"
 
 const UnknownError = "Unknown error";
@@ -41,11 +42,20 @@ function stateReducer(state: State, action: { type: string; payload: { connectiv
 }
 
 export default function Home() {
-  const [state, dispatch] = React.useReducer(stateReducer, {
+  const [state, dispatch] = useReducer(stateReducer, {
     connectivityStatus: false,
     graphData: undefined,
     info: undefined,
   } as State);
+  const [startDate24, setStartDate24] = useState<Date | undefined>(() => {
+    const date = new Date();
+    date.setHours(date.getHours() - 6);
+    return date;
+  });
+  const [endDate24, setEndDate24] = useState<Date | undefined>(() => {
+    const date = new Date();
+    return date;
+  });
 
   useEffect(() => {
     connectToGrpcServer();
@@ -65,13 +75,13 @@ export default function Home() {
   const fetchGraphData = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     try {
-      const response: Object = await invoke('get_graph_data');
+      const response: Object = await invoke('get_graph_data', {startTime: startDate24?.getTime(), endTime: endDate24?.getTime()});
       dispatch({ type: "SET_GRAPH_DATA", payload: { graphData: response } });
     } catch (error: any) {
       if (error instanceof Error) {
         dispatch({ type: "SET_INFO", payload: { info: error.message } });
       } else {
-        dispatch({ type: "SET_INFO", payload: { info: UnknownError } });
+        dispatch({ type: "SET_INFO", payload: { info: error } });
       }
     }
   };
@@ -94,7 +104,7 @@ export default function Home() {
       .map(([key, v]) => {
         const ms = Number(key.split('-')[0]);
         return {
-          time: new Date(ms).toLocaleTimeString(), // hh:mm:ss
+          time: new Date(ms).toString(),
           temperature: v.temperature,
           humidity: v.humidity,
           illumination: v.illumination,
@@ -137,8 +147,18 @@ export default function Home() {
         </CardContent>
       </Card>
 
-      {/* スマートフォンサイズの場合は全幅、大きな画面の場合は横幅の70% */}
-      <div className="w-full h-96">
+      <div className="flex w-72 flex-col gap-2">
+        <Label>24 Hour</Label>
+        <DateTimePicker hourCycle={24} value={startDate24} onChange={setStartDate24} />
+      </div>
+
+      <div className="flex w-72 flex-col gap-2">
+        <Label>24 Hour</Label>
+        <DateTimePicker hourCycle={24} value={endDate24} onChange={setEndDate24} />
+      </div>
+
+      {/* スマートフォンサイズの場合は全幅、縦幅は残り画面いっぱい使う*/}
+      <div className="w-full h-[calc(100vh-30rem)]">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={formattedData} margin={{ top: 20, right: 20, bottom: 20, left: 0 }}>
             <CartesianGrid strokeDasharray="3 3" />
