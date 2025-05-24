@@ -31,7 +31,7 @@ libsqlite3-sys = { version = "0.33", features = ["bundled"] }
 tauri = { version = "2.5", features = [] }
 tauri-plugin-log = "2.4.0"
 tokio = { version = "1", features = ["full"] }
-tonic = { version = "0.13", features = ["tls-native-roots"] }
+tonic = { version = "0.13", features = ["tls-webpki-roots"] }
 tonic-reflection = "0.13"
 prost = "0.13"
 r2d2 = "0.8"

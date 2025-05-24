@@ -31,7 +31,7 @@ pub async fn new(
 {
     let url = Url::parse(endpoint)?;
     let tls_config = ClientTlsConfig::new()
-        .with_native_roots()
+        .with_enabled_roots()
         .domain_name(url.host_str().unwrap_or(""));
 
     let channel = Channel::from_shared(endpoint.to_string())
