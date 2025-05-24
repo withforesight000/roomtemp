@@ -44,7 +44,7 @@ pub async fn connect_to_grpc_server(state: State<'_, AppState>) -> Result<String
     }
 
     if state.grpc_connection.lock().await.is_some() {
-        return Ok("Already connected to gRPC server".into());
+        return Ok("Connected to gRPC server".into());
     }
 
     let client = grpc_client::new(&settings.url, &settings.access_token)

@@ -147,14 +147,16 @@ export default function Home() {
         </CardContent>
       </Card>
 
-      <div className="flex w-72 flex-col gap-2">
-        <Label>24 Hour</Label>
-        <DateTimePicker hourCycle={24} value={startDate24} onChange={setStartDate24} />
-      </div>
+      <div className="flex w-full gap-4 my-4">
+        <div className="flex-1 flex-col gap-2">
+          <Label>Start Time</Label>
+          <DateTimePicker hourCycle={24} value={startDate24} onChange={setStartDate24} />
+        </div>
 
-      <div className="flex w-72 flex-col gap-2">
-        <Label>24 Hour</Label>
-        <DateTimePicker hourCycle={24} value={endDate24} onChange={setEndDate24} />
+        <div className="flex-1 flex-col gap-2">
+          <Label>End Time</Label>
+          <DateTimePicker hourCycle={24} value={endDate24} onChange={setEndDate24} />
+        </div>
       </div>
 
       {/* スマートフォンサイズの場合は全幅、縦幅は残り画面いっぱい使う*/}
