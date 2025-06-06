@@ -24,6 +24,9 @@ impl Interceptor for AuthInterceptor {
     }
 }
 
+// TODO: Handle HTTP URL scheme, not just HTTPS
+// TODO: Handle cases where authentication is not required
+/// Creates a new gRPC client with authentication.
 pub async fn new(
     endpoint: &str,
     bearer_token: &str,
