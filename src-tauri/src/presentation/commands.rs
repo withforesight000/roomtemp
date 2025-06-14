@@ -77,6 +77,7 @@ pub async fn get_graph_data(
             version: 1,
             start_time,
             end_time,
+            samples: Some(1000),
         }))
         .await
         .map_err(|e| e.to_string())?;
