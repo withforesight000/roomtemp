@@ -1,43 +1,79 @@
 "use client";
 
-import { Check, X } from "lucide-react"
-import React, { useEffect, useMemo, useReducer, useState } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { invoke } from '@tauri-apps/api/core';
-import { Button } from "@/components/ui/button";
+import { RustType, Decoder } from "bincode-ts";
+import { Check, X } from "lucide-react";
+import React, { useEffect, useMemo, useReducer, useState } from "react";
 import {
-  Card,
-  CardContent,
-} from "@/components/ui/card"
-import { DateTimePicker } from '@/components/ui/expansions/datetime-picker';
-import { Label } from "@/components/ui/label"
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
+import { invoke } from "@tauri-apps/api/core";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { DateTimePicker } from "@/components/ui/expansions/datetime-picker";
+import { Label } from "@/components/ui/label";
 
 const UnknownError = "Unknown error";
 
+type AmbientCondition = {
+  temperature: number;
+  humidity: number;
+  illumination: number;
+};
+type GraphData = Map<string, AmbientCondition>;
+const GraphDataRustType = RustType.HashMap(
+  RustType.Str,
+  RustType.Struct<AmbientCondition>([
+    ["temperature", RustType.f32],
+    ["humidity", RustType.f32],
+    ["illumination", RustType.f32],
+  ])
+);
 type State = {
-  connectivityStatus: boolean
-  graphData?: Object
-  info?: string
-}
+  connectivityStatus: boolean;
+  graphData?: GraphData;
+  info?: string;
+};
 
-function stateReducer(state: State, action: { type: string; payload: { connectivityStatus?: boolean; graphData?: Object; info?: string } }): State {
+const decoder = new Decoder();
+
+function stateReducer(
+  state: State,
+  action: {
+    type: string;
+    payload: {
+      connectivityStatus?: boolean;
+      graphData?: GraphData;
+      info?: string;
+    };
+  }
+): State {
   switch (action.type) {
     case "SET_CONNECTIVITY_STATUS":
       if (action.payload.connectivityStatus === undefined) {
         return state;
       }
 
-      return { ...state, connectivityStatus: action.payload.connectivityStatus }
+      return {
+        ...state,
+        connectivityStatus: action.payload.connectivityStatus,
+      };
     case "SET_GRAPH_DATA":
       if (action.payload.graphData === undefined) {
         return state;
       }
 
-      return { ...state, graphData: action.payload.graphData }
+      return { ...state, graphData: action.payload.graphData };
     case "SET_INFO":
-      return { ...state, info: action.payload.info }
+      return { ...state, info: action.payload.info };
     default:
-      return state
+      return state;
   }
 }
 
@@ -63,20 +99,42 @@ export default function Home() {
 
   const connectToGrpcServer = async () => {
     try {
-      const response = await invoke('connect_to_grpc_server');
-      dispatch({ type: "SET_CONNECTIVITY_STATUS", payload: { connectivityStatus: true } });
-      dispatch({ type: "SET_INFO", payload: { info: response !== undefined ? response as string : UnknownError } });
+      const response = await invoke("connect_to_grpc_server");
+      dispatch({
+        type: "SET_CONNECTIVITY_STATUS",
+        payload: { connectivityStatus: true },
+      });
+      dispatch({
+        type: "SET_INFO",
+        payload: {
+          info: response !== undefined ? (response as string) : UnknownError,
+        },
+      });
     } catch (error: unknown) {
       console.error("Error connecting to gRPC server:", error);
-      dispatch({ type: "SET_INFO", payload: { info: error instanceof Error ? error.message : UnknownError } });
+      dispatch({
+        type: "SET_INFO",
+        payload: {
+          info: error instanceof Error ? error.message : UnknownError,
+        },
+      });
     }
   };
 
   const fetchGraphData = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     try {
-      const response: Object = await invoke('get_graph_data', {startTime: startDate24?.getTime(), endTime: endDate24?.getTime()});
-      dispatch({ type: "SET_GRAPH_DATA", payload: { graphData: response } });
+      // tauriでは、Rust側とフロントエンド側とのデータのやり取りは通常jsonのようだが、あえてbincodeを用いてバイナリでやりとりしてみる。
+      // 理論上はバイナリを用いたほうがパフォーマンスが良いはずだが、特に体感として違いはなかった。
+      const response: ArrayBuffer = await invoke<ArrayBuffer>(
+        "get_graph_data",
+        { startTime: startDate24?.getTime(), endTime: endDate24?.getTime() }
+      );
+      const bytes = new Uint8Array(response);
+      const graphData: GraphData = decoder
+        .load(bytes)
+        .decodeAs<GraphData>(GraphDataRustType);
+      dispatch({ type: "SET_GRAPH_DATA", payload: { graphData: graphData } });
     } catch (error: any) {
       if (error instanceof Error) {
         dispatch({ type: "SET_INFO", payload: { info: error.message } });
@@ -89,20 +147,12 @@ export default function Home() {
   // graphData ⇒ Recharts 用データに変換
   const formattedData = useMemo(() => {
     // ambient_conditions プロパティがない or 空なら空配列を返す
-    if (
-      typeof state.graphData !== 'object' ||
-      state.graphData === null ||
-      !('ambient_conditions' in state.graphData)
-    ) {
+    if (state.graphData === undefined) {
       return [];
     }
-    const ambient = (state.graphData as any).ambient_conditions as Record<
-      string,
-      { temperature: number; humidity: number; illumination: number }
-    >;
-    return Object.entries(ambient)
+    return Array.from(state.graphData.entries())
       .map(([key, v]) => {
-        const ms = Number(key.split('-')[0]);
+        const ms = Number(key.split("-")[0]);
         return {
           time: new Date(ms).toString(),
           temperature: v.temperature,
@@ -119,7 +169,7 @@ export default function Home() {
         <CardContent className="my-4">
           <div className="flex flex-col w-full gap-4">
             <Label htmlFor="name">1. Connect to gRPC Server</Label>
-            <div className='flex flex-row justify-between space-x-2'>
+            <div className="flex flex-row justify-between space-x-2">
               <Button
                 className="cursor-pointer"
                 type="button"
@@ -136,12 +186,14 @@ export default function Home() {
                 )}
               </div>
             </div>
-              <div className="flex justify-end">
-                <p>status info: {state.info}</p>
-              </div>
+            <div className="flex justify-end">
+              <p>status info: {state.info}</p>
+            </div>
             <Label htmlFor="name">2. Get the graph data</Label>
-            <div className='flex flex-row justify-between space-x-2'>
-              <Button className="cursor-pointer" onClick={fetchGraphData}>Get Graph Data</Button>
+            <div className="flex flex-row justify-between space-x-2">
+              <Button className="cursor-pointer" onClick={fetchGraphData}>
+                Get Graph Data
+              </Button>
             </div>
           </div>
         </CardContent>
@@ -150,27 +202,46 @@ export default function Home() {
       <div className="flex w-full gap-4 my-4">
         <div className="flex-1 flex-col gap-2">
           <Label>Start Time</Label>
-          <DateTimePicker hourCycle={24} value={startDate24} onChange={setStartDate24} />
+          <DateTimePicker
+            hourCycle={24}
+            value={startDate24}
+            onChange={setStartDate24}
+          />
         </div>
 
         <div className="flex-1 flex-col gap-2">
           <Label>End Time</Label>
-          <DateTimePicker hourCycle={24} value={endDate24} onChange={setEndDate24} />
+          <DateTimePicker
+            hourCycle={24}
+            value={endDate24}
+            onChange={setEndDate24}
+          />
         </div>
       </div>
 
       {/* スマートフォンサイズの場合は全幅、縦幅は残り画面いっぱい使う*/}
       <div className="w-full h-[calc(100vh-30rem)]">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={formattedData} margin={{ top: 20, right: 20, bottom: 20, left: 0 }}>
+          <LineChart
+            data={formattedData}
+            margin={{ top: 20, right: 20, bottom: 20, left: 0 }}
+          >
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="time" tick={{ fontSize: 12 }} />
             <YAxis />
             <Tooltip />
             <Legend verticalAlign="top" height={36} />
-            <Line type="monotone" dataKey="temperature" name="Temperature (℃)" />
+            <Line
+              type="monotone"
+              dataKey="temperature"
+              name="Temperature (℃)"
+            />
             <Line type="monotone" dataKey="humidity" name="Humidity (%)" />
-            <Line type="monotone" dataKey="illumination" name="Illumination (lx)" />
+            <Line
+              type="monotone"
+              dataKey="illumination"
+              name="Illumination (lx)"
+            />
           </LineChart>
         </ResponsiveContainer>
       </div>

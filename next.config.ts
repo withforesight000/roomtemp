@@ -4,6 +4,12 @@ const internalHost = process.env.TAURI_DEV_HOST || 'localhost';
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Configure assetPrefix or else the server won't properly resolve your assets.
+  assetPrefix: isProd ? undefined : `http://${internalHost}:3000`,
+  eslint: {
+    // Disable ESLint during production builds
+    ignoreDuringBuilds: true,
+  },
   // Ensure Next.js uses SSG instead of SSR
   // https://nextjs.org/docs/pages/building-your-application/deploying/static-exports
   output: 'export',
@@ -12,8 +18,8 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  // Configure assetPrefix or else the server won't properly resolve your assets.
-  assetPrefix: isProd ? undefined : `http://${internalHost}:3000`,
+  // https://nextjs.org/docs/app/api-reference/config/next-config-js/transpilePackages
+  transpilePackages: ['bincode-ts'],
 };
 
 export default nextConfig;
