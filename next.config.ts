@@ -18,8 +18,9 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  // https://nextjs.org/docs/app/api-reference/config/next-config-js/transpilePackages
-  transpilePackages: ['bincode-ts'],
+  experimental: {
+    webpackMemoryOptimizations: true,
+  }
 };
 
 export default nextConfig;

@@ -1,4 +1,4 @@
-use bincode::Encode;
+use prost::Message;
 use tauri::ipc::Response;
 use tauri::State;
 
@@ -7,7 +7,7 @@ use crate::controller::settings_controller::SettingsController;
 use crate::domain::settings::Settings;
 use crate::infrastructure::grpc_client;
 
-use crate::pb::tempgrpcd::{AmbientCondition, TempgrpcdRequest};
+use crate::pb::tempgrpcd::TempgrpcdRequest;
 use crate::repository::diesel_settings_repository::DieselSettingsRepository;
 
 // Tauri の tauri::generate_handler! マクロ経由で実際には使われている
@@ -84,26 +84,13 @@ pub async fn get_graph_data(
         .await
         .map_err(|e| e.to_string())?;
 
-    let ambient_condition = resp.into_inner().ambient_conditions;
+    // TODO: gRPCコールによって受け取ったバイナリデータをデコードしたものをまたエンコードしているはずで無駄な処理をしているはず
+    // できそうなら、受け取ったバイナリデータをそのままフロントエンドに渡したい
+    let binarized_ambient_condition = resp.into_inner().encode_to_vec();
+
     // tauriでは、Rust側とフロントエンド側とのデータのやり取りは通常jsonのようだが、あえてbincodeを用いてバイナリでやりとりしてみる。
     // 理論上はバイナリを用いたほうがパフォーマンスが良いはずだが、特に体感として違いはなかった。
     // with_fixed_int_encoding() を使わないと、フロントエンド側でデコードできなかった
-    let bin = bincode::encode_to_vec(
-        &ambient_condition,
-        bincode::config::standard().with_fixed_int_encoding(),
-    )
-    .expect("bincode serialize failed");
-    Ok(Response::new(bin))
-}
 
-impl Encode for AmbientCondition {
-    fn encode<E: bincode::enc::Encoder>(
-        &self,
-        e: &mut E,
-    ) -> Result<(), bincode::error::EncodeError> {
-        bincode::Encode::encode(&self.temperature, e)?;
-        bincode::Encode::encode(&self.humidity, e)?;
-        bincode::Encode::encode(&self.illumination, e)?;
-        Ok(())
-    }
+    Ok(Response::new(binarized_ambient_condition))
 }
