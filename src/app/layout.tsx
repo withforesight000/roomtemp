@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { SidebarProvider } from "@/components/ui/sidebar"
-import { AppSidebar } from "@/components/app-sidebar"
+import { GrpcRepoProvider } from "@/interfaces/react/contexts/grpcRepoContext";
+import { Header } from "@/components/header";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -29,17 +29,14 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <SidebarProvider>
-          <div className="flex flex-row min-h-screen">
-            <div className="flex-none">
-              <AppSidebar />
-            </div>
-            <main className="flex-auto p-4 w-screen-offset">
-              {children}
-            </main>
+        <GrpcRepoProvider>
+          <div className="flex flex-col min-h-screen">
+            <Header />
+            <main className="flex-auto p-4">{children}</main>
           </div>
-        </SidebarProvider>
+        </GrpcRepoProvider>
       </body>
     </html>
   );
 }
+
