@@ -5,3 +5,8 @@ export type AmbientCondition = {
 };
 
 export type GraphData = Map<string, AmbientCondition>;
+
+export type Settings = {
+  url: string;
+  accessToken: string;
+};

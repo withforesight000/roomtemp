@@ -2,21 +2,21 @@
 
 import { GrpcRepoContext } from "@/interfaces/react/contexts/grpcRepoContext";
 import { useGrpcConnect } from "@/interfaces/react/hooks/useGrpcConnect";
-import { Home, MoveLeft, Settings } from "lucide-react";
+import { CircleCheck, CircleX, Home, MoveLeft, Settings } from "lucide-react";
 import { useContext, useEffect } from "react";
 import { Card, CardContent } from "./ui/card";
 import { usePathname, useRouter } from "next/navigation";
 
 export function Header() {
   const grpcRepo = useContext(GrpcRepoContext);
-  const { status, connect } = useGrpcConnect(grpcRepo);
+  const { state: grpcConnectState, connect } = useGrpcConnect(grpcRepo);
 
   const pathname = usePathname();
   const router = useRouter();
 
   useEffect(() => {
     connect();
-  }, [connect]);
+  }, []);
 
   const showBackButton = pathname !== "/";
 
@@ -32,11 +32,19 @@ export function Header() {
           </button>
         )}
       </div>
-      <div className="grow">
-      </div>
-      <Card className="w-64 h-6 mx-6">
+      <div className="grow"></div>
+      <Card className="w-80 h-6 mx-6">
         <CardContent className="flex items-center justify-center h-full">
-          <p>{status}</p>
+          {!grpcConnectState.isLoading && (
+            <p className="flex items-center gap-2">
+              {grpcConnectState.status}
+              {grpcConnectState.hasError ? (
+                <CircleX className="h-4 w-4 text-red-500" />
+              ) : (
+                <CircleCheck className="h-4 w-4 text-green-500" />
+              )}
+            </p>
+          )}
         </CardContent>
       </Card>
       <nav className="flex-none">

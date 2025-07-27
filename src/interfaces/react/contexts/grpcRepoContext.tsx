@@ -1,11 +1,16 @@
 "use client";
 
 import { createContext } from "react";
-import { Grpc, GrpcImpl } from "@/interfaces/repositories/grpc";
+import {
+  GrpcRepository,
+  GrpcRepositoryImpl,
+} from "@/interfaces/repositories/grpc";
 
-const repo = new GrpcImpl();
-export const GrpcRepoContext = createContext<Grpc>(repo);
+const repo = new GrpcRepositoryImpl();
+export const GrpcRepoContext = createContext<GrpcRepository>(repo);
 
 export function GrpcRepoProvider({ children }: { children: React.ReactNode }) {
-  return <GrpcRepoContext.Provider value={repo}>{children}</GrpcRepoContext.Provider>;
+  return (
+    <GrpcRepoContext.Provider value={repo}>{children}</GrpcRepoContext.Provider>
+  );
 }

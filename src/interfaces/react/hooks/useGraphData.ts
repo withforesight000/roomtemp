@@ -1,11 +1,15 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback } from "react";
 
-import { FetchGraphData } from '@/usecases/fetchGraphData';
-import { GrpcImpl } from '@/interfaces/repositories/grpc';
-import { presentGraphData, RechartPoint } from '@/interfaces/presenters/graphPresenter';
+import { FetchGraphData } from "@/usecases/fetchGraphData";
+import { GrpcRepositoryImpl } from "@/interfaces/repositories/grpc";
+import {
+  presentGraphData,
+  RechartPoint,
+} from "@/interfaces/presenters/graphPresenter";
 
-export function useGraphData(grpcRepo: GrpcImpl) {
-  const [connectivityStatus, setConnectivityStatus] = useState<string>('Disconnected');
+export function useGraphData(grpcRepo: GrpcRepositoryImpl) {
+  const [connectivityStatus, setConnectivityStatus] =
+    useState<string>("Disconnected");
   const [data, setData] = useState<RechartPoint[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -18,14 +22,14 @@ export function useGraphData(grpcRepo: GrpcImpl) {
 
     try {
       const response = await fetchGraphData.execute(startDate, endDate);
-      console.log('Fetched graph data:');
+      console.log("Fetched graph data:");
       setData(presentGraphData(response));
     } catch (err) {
       setError(`Failed to fetch graph data: ${err}`);
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   return { data, connectivityStatus, fetch, loading, error };
 }
