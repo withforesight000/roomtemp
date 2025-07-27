@@ -22,7 +22,7 @@ pub fn establish_connection_pool(app_handle: &AppHandle) -> DbPool {
         .expect("failed to get app data directory");
     std::fs::create_dir_all(&app_data).expect("failed to create app data directory");
 
-    let db_path = app_data.join("settings.db");
+    let db_path = app_data.join("roomtemp.db");
     println!("DB path: {:?}", db_path);
     let database_url = db_path.to_str().expect("invalid db path");
 

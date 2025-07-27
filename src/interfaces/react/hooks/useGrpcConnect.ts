@@ -1,19 +1,44 @@
-import { useState } from "react";
+import { useCallback, useReducer } from "react";
 
-import { GrpcImpl } from "@/interfaces/repositories/grpc";
+import { GrpcRepositoryImpl } from "@/interfaces/repositories/grpc";
 
-export function useGrpcConnect(grpcRepo: GrpcImpl) {
-  const [status, setStatus] = useState<string>("");
+type State = {
+  status: string;
+  isLoading: boolean;
+  hasError: boolean;
+}
 
-  const connect = async () => {
+function reducer(state: State, action: { type: string; payload?: string }): State {
+  switch (action.type) {
+    case "SUCCESS":
+      return { ...state, status: action.payload || "", hasError: false };
+    case "ERROR":
+      return { ...state, status: action.payload || "", hasError: true };
+    case "LOADING":
+      return { ...state, isLoading: true };
+    case "LOADED":
+      return { ...state, isLoading: false };
+    default:
+      return state;
+  }
+}
+
+export function useGrpcConnect(grpcRepo: GrpcRepositoryImpl){
+  const [state, dispatch] = useReducer(reducer, { status: "", isLoading: true, hasError: false });
+
+  const connect = useCallback(async () => {
+
     try {
+      dispatch({ type: "LOADING" });
       const status = await grpcRepo.connect();
-      setStatus(status);
+      dispatch({ type: "SUCCESS", payload: status });
     } catch (error) {
-      const status = `Failed to connect to gRPC server: ${error}`;
-      setStatus(status);
+      const status = `${error}`;
+      dispatch({ type: "ERROR", payload: status });
+    } finally {
+      dispatch({ type: "LOADED" });
     }
-  };
+  }, [grpcRepo]);
 
-  return { status, connect };
+  return { state, connect };
 }

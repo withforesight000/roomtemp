@@ -1,11 +1,45 @@
 "use client";
 
-import { createContext } from "react";
-import { Grpc, GrpcImpl } from "@/interfaces/repositories/grpc";
+import React, { createContext, useMemo, useEffect } from "react";
+import {
+  GrpcRepository,
+  GrpcRepositoryImpl,
+} from "@/interfaces/repositories/grpc";
+import { useGrpcConnect } from "../hooks/useGrpcConnect";
 
-const repo = new GrpcImpl();
-export const GrpcRepoContext = createContext<Grpc>(repo);
+export interface GrpcContextValue {
+  grpcRepo: GrpcRepository;
+  connect: () => Promise<void>;
+  state: {
+    status: string;
+    isLoading: boolean;
+    hasError: boolean;
+  };
+}
+
+const dummy: GrpcContextValue = {
+  grpcRepo: new GrpcRepositoryImpl(),
+  connect: async () => {},
+  state: {
+    status: "",
+    isLoading: false,
+    hasError: false,
+  },
+};
+
+export const GrpcRepoContext = createContext<GrpcContextValue>(dummy);
 
 export function GrpcRepoProvider({ children }: { children: React.ReactNode }) {
-  return <GrpcRepoContext.Provider value={repo}>{children}</GrpcRepoContext.Provider>;
+  const grpcRepo = useMemo(() => new GrpcRepositoryImpl(), []);
+  const { connect, state } = useGrpcConnect(grpcRepo);
+
+  useEffect(() => {
+    connect();
+  }, [connect]);
+
+  return (
+    <GrpcRepoContext.Provider value={{ grpcRepo, connect, state }}>
+      {children}
+    </GrpcRepoContext.Provider>
+  );
 }

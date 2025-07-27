@@ -8,7 +8,7 @@ import { DateTimePicker24h } from "@/components/ui/expansions/datetime-picker";
 import { GrpcRepoContext } from "@/interfaces/react/contexts/grpcRepoContext";
 
 export default function Home() {
-  const grpcRepo = useContext(GrpcRepoContext);
+  const { grpcRepo } = useContext(GrpcRepoContext);
   const [start, setStart] = useState<Date>(
     new Date(Date.now() - 6 * 60 * 60 * 1000)
   ); // 6 hours ago
