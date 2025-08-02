@@ -5,7 +5,7 @@ description = "A Tauri App"
 authors = ["you"]
 license = ""
 repository = ""
-edition = "2021"
+edition = "2024"
 # rust-version = "1.77.2"
 
 # どうやら、これを指定すると、pnpm tauri dev でエラーになる
@@ -19,7 +19,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
-tonic-build = "0.13"
+tonic-prost-build = "0.14"
 
 [dependencies]
 diesel = { version = "2", features = ["r2d2", "sqlite"] }
@@ -27,13 +27,14 @@ diesel_migrations = "2"
 log = "0.4"
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
-libsqlite3-sys = { version = "0.33", features = ["bundled"] }
-tauri = { version = "2.5", features = [] }
-tauri-plugin-log = "2.4.0"
+libsqlite3-sys = { version = "0.35", features = ["bundled"] }
+tauri = { version = "2.7", features = [] }
+tauri-plugin-log = "2.6.0"
 tokio = { version = "1", features = ["full"] }
-tonic = { version = "0.13", features = ["tls-webpki-roots"] }
-tonic-reflection = "0.13"
-prost = "0.13"
+tonic = { version = "0.14", features = ["tls-webpki-roots"] }
+tonic-prost = "0.14"
+tonic-reflection = "0.14"
+prost = "0.14"
 r2d2 = "0.8"
 rand = "0.9"
 # https://zenn.dev/myuna/scraps/a1bfaefe24dd24
