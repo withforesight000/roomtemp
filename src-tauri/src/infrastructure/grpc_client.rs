@@ -46,7 +46,7 @@ pub async fn new(
         .map_err(|e| e.to_string())?;
 
     let interceptor = AuthInterceptor {
-        token: MetadataValue::from_str(&format!("Bearer {}", bearer_token))
+        token: MetadataValue::from_str(&format!("Bearer {bearer_token}"))
             .map_err(|e| e.to_string())?,
     };
     let client = TempgrpcdClient::with_interceptor(channel, interceptor);
