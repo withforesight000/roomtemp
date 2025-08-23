@@ -6,7 +6,6 @@ mod domain;
 mod usecase;
 mod repository;
 mod controller;
-mod pb;
 mod presentation;
 mod infrastructure;
 

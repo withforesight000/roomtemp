@@ -2,7 +2,6 @@ mod app_state;
 mod controller;
 mod domain;
 mod infrastructure;
-mod pb;
 mod presentation;
 mod repository;
 mod usecase;
@@ -11,9 +10,7 @@ use std::sync::Arc;
 
 use app_state::AppState;
 use infrastructure::db::{establish_connection_pool, run_migrations};
-use presentation::commands::{
-    connect_to_grpc_server, get_graph_data, get_settings, set_settings,
-};
+use presentation::commands::{connect_to_grpc_server, get_graph_data, get_settings, set_settings};
 use tauri::Manager as _;
 use tokio::sync::Mutex;
 

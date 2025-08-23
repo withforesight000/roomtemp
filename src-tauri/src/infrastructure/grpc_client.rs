@@ -1,14 +1,13 @@
 use std::str::FromStr;
 
+use tempgrpcd_protos::tempgrpcd::v1::tempgrpcd_service_client::TempgrpcdServiceClient;
 use tonic::{
-    metadata::MetadataValue,
-    service::{interceptor::InterceptedService, Interceptor},
-    transport::{Channel, ClientTlsConfig},
     Request, Status,
+    metadata::MetadataValue,
+    service::{Interceptor, interceptor::InterceptedService},
+    transport::{Channel, ClientTlsConfig},
 };
 use url::Url;
-
-use crate::pb::tempgrpcd::tempgrpcd_client::TempgrpcdClient;
 
 /// トークンを保持するだけのシンプルな struct
 #[derive(Clone)]
@@ -30,8 +29,10 @@ impl Interceptor for AuthInterceptor {
 pub async fn new(
     endpoint: &str,
     bearer_token: &str,
-) -> Result<TempgrpcdClient<InterceptedService<Channel, AuthInterceptor>>, Box<dyn std::error::Error>>
-{
+) -> Result<
+    TempgrpcdServiceClient<InterceptedService<Channel, AuthInterceptor>>,
+    Box<dyn std::error::Error>,
+> {
     let url = Url::parse(endpoint)?;
     let tls_config = ClientTlsConfig::new()
         .with_enabled_roots()
@@ -49,7 +50,7 @@ pub async fn new(
         token: MetadataValue::from_str(&format!("Bearer {bearer_token}"))
             .map_err(|e| e.to_string())?,
     };
-    let client = TempgrpcdClient::with_interceptor(channel, interceptor);
+    let client = TempgrpcdServiceClient::with_interceptor(channel, interceptor);
 
     Ok(client)
 }

@@ -1,7 +1,8 @@
-use crate::domain::settings::Settings;
 use diesel::prelude::*;
 use diesel::r2d2::{ConnectionManager, PooledConnection};
 use diesel::sqlite::SqliteConnection;
+
+use crate::domain::settings::Settings;
 
 // Diesel 用のスキーマ定義
 pub mod schema {

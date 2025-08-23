@@ -1,13 +1,13 @@
+use pbjson_types::Timestamp;
 use prost::Message;
-use tauri::ipc::Response;
 use tauri::State;
+use tauri::ipc::Response;
+use tempgrpcd_protos::tempgrpcd::v1::GetAmbientConditionsRequest;
 
 use crate::app_state::AppState;
 use crate::controller::settings_controller::SettingsController;
 use crate::domain::settings::Settings;
 use crate::infrastructure::grpc_client;
-
-use crate::pb::tempgrpcd::TempgrpcdRequest;
 use crate::repository::diesel_settings_repository::DieselSettingsRepository;
 
 // Tauri の tauri::generate_handler! マクロ経由で実際には使われている
@@ -74,11 +74,19 @@ pub async fn get_graph_data(
             .cloned()
             .ok_or_else(|| "gRPC client is not connected".to_string())?
     };
+    let start_timestamp = Timestamp {
+        seconds: start_time as i64,
+        nanos: 0,
+    };
+    let end_timestamp = Timestamp {
+        seconds: end_time as i64,
+        nanos: 0,
+    };
+
     let resp = client
-        .get_ambient_conditions(tonic::Request::new(TempgrpcdRequest {
-            version: 1,
-            start_time,
-            end_time,
+        .get_ambient_conditions(tonic::Request::new(GetAmbientConditionsRequest {
+            start_time: Some(start_timestamp),
+            end_time: Some(end_timestamp),
             samples: Some(1000),
         }))
         .await
