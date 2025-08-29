@@ -4,7 +4,10 @@ import { Settings } from "@/domain/types";
 
 type State = Settings & { error?: string };
 
-function reducer(state: State, action: { type: string; payload: Partial<State> }): State {
+function reducer(
+  state: State,
+  action: { type: string; payload: Partial<State> }
+): State {
   switch (action.type) {
     case "LOAD":
       return { ...state, ...action.payload, error: undefined };
@@ -19,7 +22,13 @@ function reducer(state: State, action: { type: string; payload: Partial<State> }
 }
 
 export function useSettings(repo: SettingsRepository) {
-  const [state, dispatch] = useReducer(reducer, { url: "", accessToken: "", error: undefined } as State);
+  const [state, dispatch] = useReducer(reducer, {
+    url: "",
+    accessToken: "",
+    useProxies: false,
+    proxyUrl: "",
+    error: undefined,
+  } as State);
 
   const load = async () => {
     try {
@@ -32,7 +41,12 @@ export function useSettings(repo: SettingsRepository) {
 
   const save = async () => {
     try {
-      await repo.save({ url: state.url, accessToken: state.accessToken });
+      await repo.save({
+        url: state.url,
+        accessToken: state.accessToken,
+        useProxies: state.useProxies,
+        proxyUrl: state.proxyUrl,
+      });
       dispatch({ type: "SET_ERROR", payload: { error: undefined } });
     } catch (error: any) {
       dispatch({ type: "SET_ERROR", payload: { error: error.message } });

@@ -9,4 +9,6 @@ export type GraphData = Map<string, AmbientCondition>;
 export type Settings = {
   url: string;
   accessToken: string;
+  useProxies: boolean;
+  proxyUrl: string;
 };

@@ -13,6 +13,8 @@ pub mod schema {
             id -> Integer,
             url -> Text,
             access_token -> Text,
+            use_proxies -> Bool,
+            proxy_url -> Text
         }
     }
 }
@@ -22,6 +24,8 @@ struct SettingEntity {
     pub id: i32,
     pub url: String,
     pub access_token: String,
+    pub use_proxies: bool,
+    pub proxy_url: String,
 }
 
 #[derive(Insertable)]
@@ -30,6 +34,8 @@ struct NewSetting<'a> {
     pub id: i32,
     pub url: &'a str,
     pub access_token: &'a str,
+    pub use_proxies: bool,
+    pub proxy_url: &'a str,
 }
 
 /// リポジトリインターフェース（設定の取得・保存）
@@ -57,6 +63,8 @@ impl SettingsRepository for DieselSettingsRepository {
                 id: entity.id,
                 url: entity.url,
                 access_token: entity.access_token,
+                use_proxies: entity.use_proxies,
+                proxy_url: entity.proxy_url,
             }))
         } else {
             diesel::insert_into(settings)
@@ -64,6 +72,8 @@ impl SettingsRepository for DieselSettingsRepository {
                     id: 1,
                     url: "",
                     access_token: "",
+                    use_proxies: false,
+                    proxy_url: "",
                 })
                 .execute(&mut self.conn)
                 .map_err(|e| e.to_string())?;
@@ -72,6 +82,8 @@ impl SettingsRepository for DieselSettingsRepository {
                 id: 1,
                 url: "".to_string(),
                 access_token: "".to_string(),
+                use_proxies: false,
+                proxy_url: "".to_string(),
             }))
         }
     }
@@ -86,6 +98,8 @@ impl SettingsRepository for DieselSettingsRepository {
             id: 1,
             url: &setting.url,
             access_token: &setting.access_token,
+            use_proxies: setting.use_proxies,
+            proxy_url: &setting.proxy_url,
         };
         diesel::insert_into(settings)
             .values(&new_setting)

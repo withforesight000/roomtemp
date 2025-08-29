@@ -2,13 +2,13 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod app_state;
-mod domain;
-mod usecase;
-mod repository;
 mod controller;
-mod presentation;
+mod domain;
 mod infrastructure;
+mod presentation;
+mod repository;
+mod usecase;
 
 fn main() {
-  app_lib::run();
+    app_lib::run();
 }

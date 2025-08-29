@@ -19,8 +19,8 @@ impl<'a> SettingsController<'a> {
     }
 
     /// 設定の更新
-    pub fn set(&mut self, url: String, access_token: String) -> Result<(), String> {
-        let setting = Settings { id: 1, url, access_token };
+    pub fn set(&mut self, url: String, access_token: String, use_proxies: bool, proxy_url: String) -> Result<(), String> {
+        let setting = Settings { id: 1, url, access_token, use_proxies, proxy_url };
         settings::set_setting(self.repo, setting)
     }
 }

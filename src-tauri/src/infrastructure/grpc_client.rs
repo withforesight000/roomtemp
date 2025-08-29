@@ -1,5 +1,7 @@
 use std::str::FromStr;
 
+use hyper_http_proxy::{Intercept, Proxy, ProxyConnector};
+use hyper_util::client::legacy::connect::HttpConnector;
 use tempgrpcd_protos::tempgrpcd::v1::tempgrpcd_service_client::TempgrpcdServiceClient;
 use tonic::{
     Request, Status,
@@ -8,6 +10,8 @@ use tonic::{
     transport::{Channel, ClientTlsConfig},
 };
 use url::Url;
+
+use crate::domain::settings::Settings;
 
 /// トークンを保持するだけのシンプルな struct
 #[derive(Clone)]
@@ -25,29 +29,42 @@ impl Interceptor for AuthInterceptor {
 
 // TODO: Handle HTTP URL scheme, not just HTTPS
 // TODO: Handle cases where authentication is not required
+// TODO: Handle non-HTTP proxy
 /// Creates a new gRPC client with authentication.
 pub async fn new(
-    endpoint: &str,
-    bearer_token: &str,
+    settings: &Settings,
 ) -> Result<
     TempgrpcdServiceClient<InterceptedService<Channel, AuthInterceptor>>,
     Box<dyn std::error::Error>,
 > {
-    let url = Url::parse(endpoint)?;
+    let url = Url::parse(&settings.url)?;
     let tls_config = ClientTlsConfig::new()
         .with_enabled_roots()
         .domain_name(url.host_str().unwrap_or(""));
 
-    let channel = Channel::from_shared(endpoint.to_string())
+    let endpoint = Channel::from_shared(url.to_string())
         .map_err(|e| e.to_string())?
         .tls_config(tls_config)
-        .map_err(|e| e.to_string())?
-        .connect()
-        .await
         .map_err(|e| e.to_string())?;
 
+    let channel = if settings.use_proxies {
+        let proxy = {
+            let proxy_uri = settings.proxy_url.parse()?;
+            let mut proxy = Proxy::new(Intercept::All, proxy_uri);
+            let connector = HttpConnector::new();
+            proxy.force_connect();
+            ProxyConnector::from_proxy_unsecured(connector, proxy)
+        };
+        endpoint.connect_with_connector(proxy).await.map_err(|e| {
+            eprintln!("Failed to connect via proxy: {e:?}");
+            e.to_string()
+        })?
+    } else {
+        endpoint.connect().await.map_err(|e| e.to_string())?
+    };
+
     let interceptor = AuthInterceptor {
-        token: MetadataValue::from_str(&format!("Bearer {bearer_token}"))
+        token: MetadataValue::from_str(&format!("Bearer {}", &settings.access_token))
             .map_err(|e| e.to_string())?,
     };
     let client = TempgrpcdServiceClient::with_interceptor(channel, interceptor);

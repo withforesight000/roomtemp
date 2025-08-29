@@ -1,0 +1,2 @@
+ALTER TABLE settings ADD COLUMN use_proxies BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE settings ADD COLUMN proxy_url TEXT;

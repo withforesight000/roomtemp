@@ -19,7 +19,10 @@ pub fn get_settings(state: State<AppState>) -> Result<Settings, String> {
     let mut controller = SettingsController::new(&mut repo);
     match controller.get() {
         Ok(settings) => Ok(settings.unwrap()),
-        Err(e) => Err(e),
+        Err(e) => {
+            eprintln!("Error getting settings: {}", e);
+            Err(e)
+        },
     }
 }
 
@@ -29,11 +32,13 @@ pub fn set_settings(
     state: State<AppState>,
     url: String,
     access_token: String,
+    use_proxies: bool,
+    proxy_url: String,
 ) -> Result<(), String> {
     let conn = state.pool.get().map_err(|e| e.to_string())?;
     let mut repo = DieselSettingsRepository { conn };
     let mut controller = SettingsController::new(&mut repo);
-    controller.set(url, access_token)
+    controller.set(url, access_token, use_proxies, proxy_url)
 }
 
 #[allow(dead_code)]
@@ -45,11 +50,11 @@ pub async fn connect_to_grpc_server(state: State<'_, AppState>) -> Result<String
         return Err("URL or access token is empty".into());
     }
 
-    if state.grpc_connection.lock().await.is_some() {
-        return Ok("Connected to gRPC server".into());
-    }
+    // if state.grpc_connection.lock().await.is_some() {
+    //     return Ok("Connected to gRPC server".into());
+    // }
 
-    let client = grpc_client::new(&settings.url, &settings.access_token)
+    let client = grpc_client::new(&settings)
         .await
         .map_err(|e| format!("Failed to create gRPC client: {e}"))?;
 
