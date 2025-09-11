@@ -3,6 +3,8 @@ use diesel::r2d2::{ConnectionManager, PooledConnection};
 use diesel::sqlite::SqliteConnection;
 
 use crate::domain::settings::Settings;
+use crate::infrastructure::crypto::{Crypto, CryptoBox};
+use crate::infrastructure::keystore::KeyStore;
 
 // Diesel 用のスキーマ定義
 pub mod schema {
@@ -12,7 +14,8 @@ pub mod schema {
         settings (id) {
             id -> Integer,
             url -> Text,
-            access_token -> Text,
+            encrypted_access_token -> Blob,
+            encrypted_access_token_nonce -> Blob,
             use_proxies -> Bool,
             proxy_url -> Text
         }
@@ -23,7 +26,8 @@ pub mod schema {
 struct SettingEntity {
     pub id: i32,
     pub url: String,
-    pub access_token: String,
+    pub encrypted_access_token: Vec<u8>,
+    pub encrypted_access_token_nonce: Vec<u8>,
     pub use_proxies: bool,
     pub proxy_url: String,
 }
@@ -33,7 +37,8 @@ struct SettingEntity {
 struct NewSetting<'a> {
     pub id: i32,
     pub url: &'a str,
-    pub access_token: &'a str,
+    pub encrypted_access_token: &'a [u8],
+    pub encrypted_access_token_nonce: &'a [u8],
     pub use_proxies: bool,
     pub proxy_url: &'a str,
 }
@@ -58,20 +63,36 @@ impl SettingsRepository for DieselSettingsRepository {
             .first::<SettingEntity>(&mut self.conn)
             .optional()
             .map_err(|e| e.to_string())?;
+
+        let key_bytes = KeyStore::get_or_create_key().map_err(|e| e.to_string())?;
+        let crypt = CryptoBox::new(&key_bytes).map_err(|e| e.to_string())?;
+
         if let Some(entity) = result {
+            let access_token = crypt
+                .decrypt_string(
+                    &entity.encrypted_access_token,
+                    &entity.encrypted_access_token_nonce,
+                )
+                .map_err(|e| e.to_string())?;
+
             Ok(Some(Settings {
                 id: entity.id,
                 url: entity.url,
-                access_token: entity.access_token,
+                access_token,
                 use_proxies: entity.use_proxies,
                 proxy_url: entity.proxy_url,
             }))
         } else {
+        let (ciphertext, nonce) = crypt
+            .encrypt_string("")
+            .map_err(|e| e.to_string())?;
+
             diesel::insert_into(settings)
                 .values(&NewSetting {
                     id: 1,
                     url: "",
-                    access_token: "",
+                    encrypted_access_token: &ciphertext,
+                    encrypted_access_token_nonce: &nonce,
                     use_proxies: false,
                     proxy_url: "",
                 })
@@ -90,6 +111,14 @@ impl SettingsRepository for DieselSettingsRepository {
 
     fn set(&mut self, setting: Settings) -> Result<(), String> {
         use self::schema::settings::dsl::*;
+
+        let key_bytes = KeyStore::get_or_create_key().map_err(|e| e.to_string())?;
+        let crypt = CryptoBox::new(&key_bytes).map_err(|e| e.to_string())?;
+
+        let (ciphertext, nonce) = crypt
+            .encrypt_string(&setting.access_token)
+            .map_err(|e| e.to_string())?;
+
         // 既存レコードの削除（簡易アップサート）
         diesel::delete(settings.filter(id.eq(1)))
             .execute(&mut self.conn)
@@ -97,7 +126,8 @@ impl SettingsRepository for DieselSettingsRepository {
         let new_setting = NewSetting {
             id: 1,
             url: &setting.url,
-            access_token: &setting.access_token,
+            encrypted_access_token: &ciphertext,
+            encrypted_access_token_nonce: &nonce,
             use_proxies: setting.use_proxies,
             proxy_url: &setting.proxy_url,
         };

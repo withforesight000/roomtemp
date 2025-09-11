@@ -14,10 +14,15 @@ use presentation::commands::{connect_to_grpc_server, get_graph_data, get_setting
 use tauri::Manager as _;
 use tokio::sync::Mutex;
 
+use crate::infrastructure::keystore;
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .setup(|app| {
+            let identifier = app.config().identifier.as_str();
+            println!("App Identifier: {}", identifier);
+            keystore::init_service(identifier);
             // AppHandle を渡して DB 接続プールを生成
             let pool = establish_connection_pool(app.handle());
             // マイグレーションの実行
