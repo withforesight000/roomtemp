@@ -76,7 +76,7 @@ export default function SettingsPage() {
                       });
                     }}
                   />
-                  <Label htmlFor="use-proxies">Use Proxies</Label>
+                  <Label htmlFor="use-proxies">Use a Proxy Server</Label>
                 </div>
                 <div
                   className={`ml-6 space-y-1.5 transition-opacity duration-150 ${
