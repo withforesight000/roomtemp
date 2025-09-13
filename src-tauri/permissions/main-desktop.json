@@ -1,0 +1,21 @@
+{
+  "default": null,
+  "permission": [
+    {
+      "identifier": "main-desktop",
+      "description": "desktop capabilities (Windows/macOS/Linux)",
+      "commands": {
+        "allow": [
+          "core:app:default",
+          "core:event:default",
+          "core:window:default",
+          "core:path:default",
+          "core:resources:default",
+          "core:menu:default",
+          "core:tray:default"
+        ],
+        "deny": []
+      }
+    }
+  ]
+}

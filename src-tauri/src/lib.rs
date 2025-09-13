@@ -18,6 +18,10 @@ use crate::infrastructure::keystore;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    #[cfg(target_os = "android")]
+    android_native_keyring_store::set_android_keyring_credential_builder()
+        .expect("android-keyring init failed");
+
     tauri::Builder::default()
         .setup(|app| {
             let identifier = app.config().identifier.as_str();

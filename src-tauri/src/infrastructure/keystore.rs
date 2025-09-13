@@ -29,11 +29,12 @@ impl KeyStore {
     pub fn get_or_create_key() -> Result<[u8; 32], KeystoreError> {
         #[cfg(target_os = "android")]
         {
-            use android_keyring::AndroidKeyring;
-            use chacha20poly1305::aead::rand_core::le;
-            let kr = AndroidKeyring::new(Service_str())
+            // On Android, We have to use keyring_core crate instead of keyring crate.
+            use keyring_core;
+            let entry = keyring_core::Entry::new(service_str(), Self::ACCOUNT)
                 .map_err(|e| KeystoreError::Other(e.to_string()))?;
-            if let Ok(Some(b64)) = kr.get_password(Self::ACCOUNT) {
+
+            if let Ok(b64) = entry.get_password() {
                 let bytes = STANDARD
                     .decode(&b64)
                     .map_err(|e| KeystoreError::Other(e.to_string()))?;
@@ -41,27 +42,30 @@ impl KeyStore {
             }
             let key = Self::generate_key();
             let b64 = STANDARD.encode(key);
-            kr.set_password(Self::ACCOUNT, &b64)
+            entry
+                .set_password(&b64)
                 .map_err(|e| KeystoreError::Other(e.to_string()))?;
             return Ok(key);
         }
 
-        // #[allow(unused_mut)]
-        let entry = keyring::Entry::new(service_str(), Self::ACCOUNT)
-            .map_err(|e| KeystoreError::Other(e.to_string()))?;
-
-        if let Ok(b64) = entry.get_password() {
-            let bytes = STANDARD
-                .decode(&b64)
+        #[cfg(not(target_os = "android"))]
+        {
+            let entry = keyring::Entry::new(service_str(), Self::ACCOUNT)
                 .map_err(|e| KeystoreError::Other(e.to_string()))?;
-            return Self::into_fixed(bytes);
+
+            if let Ok(b64) = entry.get_password() {
+                let bytes = STANDARD
+                    .decode(&b64)
+                    .map_err(|e| KeystoreError::Other(e.to_string()))?;
+                return Self::into_fixed(bytes);
+            }
+            let key = Self::generate_key();
+            let b64 = STANDARD.encode(key);
+            entry
+                .set_password(&b64)
+                .map_err(|e| KeystoreError::Other(e.to_string()))?;
+            Ok(key)
         }
-        let key = Self::generate_key();
-        let b64 = STANDARD.encode(key);
-        entry
-            .set_password(&b64)
-            .map_err(|e| KeystoreError::Other(e.to_string()))?;
-        Ok(key)
     }
 
     fn generate_key() -> [u8; 32] {

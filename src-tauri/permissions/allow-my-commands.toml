@@ -1,0 +1,10 @@
+"$schema" = "../gen/schemas/schema.json"
+[[permission]]
+identifier = "allow-my-commands"
+description = "Allow invoking custom app commands from the frontend"
+commands.allow = [
+  "get_settings",
+  "set_settings",
+  "connect_to_grpc_server",
+  "get_graph_data"
+]
