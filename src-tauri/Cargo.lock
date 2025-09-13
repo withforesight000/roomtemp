@@ -103,6 +103,7 @@ dependencies = [
  "hyper-http-proxy",
  "hyper-util",
  "keyring",
+ "keyring-core",
  "libsqlite3-sys",
  "once_cell",
  "pbjson-types",
