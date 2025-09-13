@@ -22,6 +22,11 @@ tauri-build = { version = "2", features = [] }
 tonic-prost-build = "0.14"
 
 [dependencies]
+# [target.'cfg(target_os = "android")'.dependencies]
+android-native-keyring-store = { version = "0.4", features = ["ndk-context"] }
+# ndk-context = { version = "0.1" }
+# [target.'cfg(not(target_os = "android"))'.dependencies]
+
 base64 = "0"
 chacha20poly1305 = "0.10"
 diesel = { version = "2", features = ["r2d2", "sqlite"] }

@@ -20,6 +20,7 @@
       }
     ],
     "security": {
+      "capabilities": ["main-desktop", "main-mobile"],
       "csp": null
     }
   },

@@ -1,0 +1,13 @@
+{
+  "default": null,
+  "permission": [
+    {
+      "identifier": "main-mobile",
+      "description": "mobile capabilities (Android/iOS)",
+      "commands": {
+        "allow": ["core:app:default"],
+        "deny": []
+      }
+    }
+  ]
+}
