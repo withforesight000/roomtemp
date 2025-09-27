@@ -43,10 +43,20 @@ struct NewSetting<'a> {
     pub proxy_url: &'a str,
 }
 
+#[derive(Debug, thiserror::Error)]
+pub enum DieselSettingsRepositoryError {
+    #[error("database error: {0}")]
+    Database(#[from] diesel::result::Error),
+    #[error("crypto error: {0}")]
+    Crypto(#[from] crate::infrastructure::crypto::CryptoError),
+    #[error("keystore error: {0}")]
+    Keystore(#[from] crate::infrastructure::keystore::KeystoreError),
+}
+
 /// リポジトリインターフェース（設定の取得・保存）
 pub trait SettingsRepository {
-    fn get(&mut self) -> Result<Option<Settings>, String>;
-    fn set(&mut self, setting: Settings) -> Result<(), String>;
+    fn get(&mut self) -> Result<Option<Settings>, DieselSettingsRepositoryError>;
+    fn set(&mut self, setting: Settings) -> Result<(), DieselSettingsRepositoryError>;
 }
 
 /// Diesel を利用したリポジトリ実装
@@ -55,25 +65,23 @@ pub struct DieselSettingsRepository {
 }
 
 impl SettingsRepository for DieselSettingsRepository {
-    fn get(&mut self) -> Result<Option<Settings>, String> {
+    fn get(&mut self) -> Result<Option<Settings>, DieselSettingsRepositoryError> {
         use self::schema::settings::dsl::*;
 
         let result = settings
             .filter(id.eq(1))
             .first::<SettingEntity>(&mut self.conn)
-            .optional()
-            .map_err(|e| e.to_string())?;
+            .optional()?;
 
-        let key_bytes = KeyStore::get_or_create_key().map_err(|e| e.to_string())?;
-        let crypt = CryptoBox::new(&key_bytes).map_err(|e| e.to_string())?;
+        let key_bytes = KeyStore::get_or_create_key()?;
+        let crypt = CryptoBox::new(&key_bytes)?;
 
         if let Some(entity) = result {
             let access_token = crypt
                 .decrypt_string(
                     &entity.encrypted_access_token,
                     &entity.encrypted_access_token_nonce,
-                )
-                .map_err(|e| e.to_string())?;
+                )?;
 
             Ok(Some(Settings {
                 id: entity.id,
@@ -84,8 +92,7 @@ impl SettingsRepository for DieselSettingsRepository {
             }))
         } else {
         let (ciphertext, nonce) = crypt
-            .encrypt_string("")
-            .map_err(|e| e.to_string())?;
+            .encrypt_string("")?;
 
             diesel::insert_into(settings)
                 .values(&NewSetting {
@@ -96,8 +103,7 @@ impl SettingsRepository for DieselSettingsRepository {
                     use_proxies: false,
                     proxy_url: "",
                 })
-                .execute(&mut self.conn)
-                .map_err(|e| e.to_string())?;
+                .execute(&mut self.conn)?;
 
             Ok(Some(Settings {
                 id: 1,
@@ -109,20 +115,18 @@ impl SettingsRepository for DieselSettingsRepository {
         }
     }
 
-    fn set(&mut self, setting: Settings) -> Result<(), String> {
+    fn set(&mut self, setting: Settings) -> Result<(), DieselSettingsRepositoryError> {
         use self::schema::settings::dsl::*;
 
-        let key_bytes = KeyStore::get_or_create_key().map_err(|e| e.to_string())?;
-        let crypt = CryptoBox::new(&key_bytes).map_err(|e| e.to_string())?;
+        let key_bytes = KeyStore::get_or_create_key()?;
+        let crypt = CryptoBox::new(&key_bytes)?;
 
         let (ciphertext, nonce) = crypt
-            .encrypt_string(&setting.access_token)
-            .map_err(|e| e.to_string())?;
+            .encrypt_string(&setting.access_token)?;
 
         // 既存レコードの削除（簡易アップサート）
         diesel::delete(settings.filter(id.eq(1)))
-            .execute(&mut self.conn)
-            .map_err(|e| e.to_string())?;
+            .execute(&mut self.conn)?;
         let new_setting = NewSetting {
             id: 1,
             url: &setting.url,
@@ -133,8 +137,7 @@ impl SettingsRepository for DieselSettingsRepository {
         };
         diesel::insert_into(settings)
             .values(&new_setting)
-            .execute(&mut self.conn)
-            .map_err(|e| e.to_string())?;
+            .execute(&mut self.conn)?;
         Ok(())
     }
 }

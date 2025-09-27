@@ -8,21 +8,19 @@ use crate::app_state::AppState;
 use crate::controller::settings_controller::SettingsController;
 use crate::domain::settings::Settings;
 use crate::infrastructure::grpc_client;
+use crate::presentation::ui_error::{self, UIError};
 use crate::repository::diesel_settings_repository::DieselSettingsRepository;
 
 // Tauri の tauri::generate_handler! マクロ経由で実際には使われている
 #[allow(dead_code)]
 #[tauri::command]
-pub fn get_settings(state: State<AppState>) -> Result<Settings, String> {
-    let conn = state.pool.get().map_err(|e| e.to_string())?;
+pub fn get_settings(state: State<AppState>) -> Result<Settings, UIError> {
+    let conn = state.pool.get()?;
     let mut repo = DieselSettingsRepository { conn };
     let mut controller = SettingsController::new(&mut repo);
     match controller.get() {
         Ok(settings) => Ok(settings.unwrap()),
-        Err(e) => {
-            eprintln!("Error getting settings: {}", e);
-            Err(e)
-        },
+        Err(e) => Err(UIError::from(e)),
     }
 }
 
@@ -34,29 +32,25 @@ pub fn set_settings(
     access_token: String,
     use_proxies: bool,
     proxy_url: String,
-) -> Result<(), String> {
-    let conn = state.pool.get().map_err(|e| e.to_string())?;
+) -> Result<(), UIError> {
+    let conn = state.pool.get()?;
     let mut repo = DieselSettingsRepository { conn };
     let mut controller = SettingsController::new(&mut repo);
-    controller.set(url, access_token, use_proxies, proxy_url)
+    controller.set(url, access_token, use_proxies, proxy_url)?;
+    Ok(())
 }
 
 #[allow(dead_code)]
 #[tauri::command]
-pub async fn connect_to_grpc_server(state: State<'_, AppState>) -> Result<String, String> {
+pub async fn connect_to_grpc_server(state: State<'_, AppState>) -> Result<String, UIError> {
     let settings = get_settings(state.clone())?;
 
     if settings.url.is_empty() || settings.access_token.is_empty() {
-        return Err("URL or access token is empty".into());
+        return Err(ui_error::url_access_token_empty_error());
     }
 
-    // if state.grpc_connection.lock().await.is_some() {
-    //     return Ok("Connected to gRPC server".into());
-    // }
-
     let client = grpc_client::new(&settings)
-        .await
-        .map_err(|e| format!("Failed to create gRPC client: {e}"))?;
+        .await?;
 
     let mut guard = state.grpc_connection.lock().await;
     *guard = Some(client);
