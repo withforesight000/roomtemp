@@ -1,36 +1,101 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# RoomTemp
 
-## Getting Started
+RoomTemp is a cross-platform desktop and mobile application that visualizes ambient temperature, humidity, and illumination collected from a dedicated gRPC service. The UI is built with Next.js (App Router) and Tailwind, while a Rust-based Tauri backend handles secure configuration storage and gRPC communication.
 
-First, run the development server:
+## Features
+
+- Interactive temperature, humidity, and illumination charts with time-range selection.
+- Secure gRPC connectivity using bearer-token authentication and optional HTTP proxy support.
+- In-app settings editor with encrypted persistence backed by the OS keychain.
+- Unified Tauri configuration for desktop and mobile builds with explicit capability definitions.
+
+## Tech Stack
+
+- **Frontend:** Next.js 15 (App Router), React 19, Tailwind CSS, shadcn/ui, Recharts.
+- **Bridge:** Tauri 2 with IPC commands exposed through `@tauri-apps/api`.
+- **Backend:** Rust 1.82+ (edition 2024), Diesel + SQLite, tonic gRPC client, ChaCha20-Poly1305 encryption.
+- **Proto definitions:** `@withforesight/tempgrpcd-protos` (TypeScript) and `tempgrpcd-protos` (Rust) fetched via SSH from the internal Gitea instance.
+
+## Requirements
+
+- Node.js 20 LTS or newer compatible with Next.js 15.
+- pnpm 9 (`corepack enable` recommended).
+- Rust toolchain (`rustup`) and the platform prerequisites listed in the [Tauri 2 documentation](https://v2.tauri.app/start/).
+- SSH access to the `@withforesight/tempgrpcd-protos` and `tempgrpcd-protos` repositories hosted on the internal Gitea server.
+- A reachable `tempgrpcd` gRPC server that supports TLS and bearer-token authentication.
+
+## Quick Start
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# install dependencies
+pnpm install
+
+# run the Next.js dev server and Tauri shell together
+pnpm tauri dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+`pnpm tauri dev` automatically runs the Next.js development server defined in the Tauri configuration and opens the Tauri window once the frontend is ready.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Linting
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+pnpm lint
+```
 
-## Learn More
+### Configure the gRPC endpoint
 
-To learn more about Next.js, take a look at the following resources:
+1. Launch the app with `pnpm tauri dev`.
+2. Open **Settings** (top-right icon or navigate to `/settings`).
+3. Provide the gRPC URL, access token, and optional proxy URL.
+4. Click **Update** to save and trigger a reconnect with the new credentials.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Building
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Desktop builds embed the static Next.js output inside the Tauri shell, while mobile builds reuse the generated Android project under `src-tauri/gen/android`.
 
-## Deploy on Vercel
+```bash
+# Desktop installers (macOS, Windows, Linux)
+pnpm tauri build
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+# Android debug build / deploy (requires Android SDK)
+pnpm tauri android dev
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Consult the Tauri mobile documentation for iOS setup; configuration entries are already present for mobile capability profiles.
+
+## Data & Security
+
+- Settings persist in a SQLite database created in the OS-specific application data directory.
+- Access tokens are encrypted with ChaCha20-Poly1305; encryption keys are stored via the platform keystore or keychain.
+- gRPC traffic runs over TLS with the host derived from the configured endpoint; bearer tokens are injected with a tonic interceptor.
+
+## Architecture Overview
+
+- **Frontend:** React components fetch time-series data through a context-provided repository, transform it for visualization, and render with Recharts.
+- **Bridge:** `@tauri-apps/api` `invoke` calls proxy to Rust commands for establishing connections and retrieving protobuf payloads.
+- **Backend:** Tauri commands manage connection pooling, execute Diesel-backed use cases, and stream serialized protobuf responses to the UI.
+
+## Project Layout
+
+```text
+.
+├── src/                     # Next.js application (app router)
+│   ├── app/                 # Pages, layout, global styles
+│   ├── interfaces/          # Repositories, presenters, React hooks, contexts
+│   ├── usecases/            # Frontend application services
+│   ├── frameworks/          # Proto decoding helpers
+│   └── domain/              # Frontend domain models
+└── src-tauri/               # Tauri 2 Rust workspace
+    ├── src/                 # Rust commands, controllers, repositories, infrastructure
+    ├── migration/           # Diesel migrations
+    ├── capabilities/        # Desktop/mobile capability profiles
+    └── permissions/         # IPC permission sets for custom commands
+```
+
+## Troubleshooting
+
+- **Proto package fetch fails:** confirm your SSH agent can reach the internal Gitea host.
+- **gRPC transport errors:** verify endpoint URL, TLS certificate, proxy settings, and access token validity.
+- **Keychain/Keystore issues:** ensure the app has permission to access secure storage on the host OS (macOS and mobile may require explicit consent).
+
+Happy hacking!
