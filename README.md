@@ -14,14 +14,14 @@ RoomTemp is a cross-platform desktop and mobile application that visualizes ambi
 - **Frontend:** Next.js 15 (App Router), React 19, Tailwind CSS, shadcn/ui, Recharts.
 - **Bridge:** Tauri 2 with IPC commands exposed through `@tauri-apps/api`.
 - **Backend:** Rust 1.82+ (edition 2024), Diesel + SQLite, tonic gRPC client, ChaCha20-Poly1305 encryption.
-- **Proto definitions:** `@withforesight/tempgrpcd-protos` (TypeScript) and `tempgrpcd-protos` (Rust) fetched via SSH from the internal Gitea instance.
+- **Proto definitions:** TypeScript bindings from `@withforesight/tempgrpcd-protos` on `withforesight000/protobuf-ts` (HTTPS) and Rust bindings from `tempgrpcd-protos` on `withforesight000/protobuf-rust` (HTTPS).
 
 ## Requirements
 
 - Node.js 20 LTS or newer compatible with Next.js 15.
 - pnpm 9 (`corepack enable` recommended).
 - Rust toolchain (`rustup`) and the platform prerequisites listed in the [Tauri 2 documentation](https://v2.tauri.app/start/).
-- SSH access to the `@withforesight/tempgrpcd-protos` and `tempgrpcd-protos` repositories hosted on the internal Gitea server.
+- Git access to GitHub (`withforesight000/protobuf-ts` and `withforesight000/protobuf-rust`) for fetching the shared proto packages.
 - A reachable `tempgrpcd` gRPC server that supports TLS and bearer-token authentication.
 
 ## Quick Start
@@ -79,22 +79,27 @@ Consult the Tauri mobile documentation for iOS setup; configuration entries are 
 
 ```text
 .
-├── src/                     # Next.js application (app router)
+├── src/                     # Next.js application (App Router)
 │   ├── app/                 # Pages, layout, global styles
-│   ├── interfaces/          # Repositories, presenters, React hooks, contexts
-│   ├── usecases/            # Frontend application services
+│   ├── components/          # UI building blocks
+│   ├── data/                # Time-series adapters and fixtures
+│   ├── domain/              # Frontend domain models
 │   ├── frameworks/          # Proto decoding helpers
-│   └── domain/              # Frontend domain models
+│   ├── interfaces/          # Repositories, presenters, hooks, contexts
+│   ├── lib/                 # Shared utilities
+│   └── usecases/            # Frontend application services
 └── src-tauri/               # Tauri 2 Rust workspace
-    ├── src/                 # Rust commands, controllers, repositories, infrastructure
-    ├── migration/           # Diesel migrations
+    ├── src/                 # Commands, controllers, repositories, infrastructure
+    │   └── migration/       # Diesel migrations
     ├── capabilities/        # Desktop/mobile capability profiles
-    └── permissions/         # IPC permission sets for custom commands
+    ├── permissions/         # IPC permission sets for custom commands
+    ├── gen/                 # Generated mobile project artifacts
+    └── icons/               # Platform icon assets
 ```
 
 ## Troubleshooting
 
-- **Proto package fetch fails:** confirm your SSH agent can reach the internal Gitea host.
+- **Proto package fetch fails:** confirm Git can reach the `withforesight000/protobuf-ts` and `withforesight000/protobuf-rust` repositories.
 - **gRPC transport errors:** verify endpoint URL, TLS certificate, proxy settings, and access token validity.
 - **Keychain/Keystore issues:** ensure the app has permission to access secure storage on the host OS (macOS and mobile may require explicit consent).
 
