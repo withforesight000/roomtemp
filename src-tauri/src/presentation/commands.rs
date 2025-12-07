@@ -90,9 +90,5 @@ pub async fn get_graph_data(
     // できそうなら、受け取ったバイナリデータをそのままフロントエンドに渡したい
     let binarized_ambient_condition = resp.into_inner().encode_to_vec();
 
-    // tauriでは、Rust側とフロントエンド側とのデータのやり取りは通常jsonのようだが、あえてbincodeを用いてバイナリでやりとりしてみる。
-    // 理論上はバイナリを用いたほうがパフォーマンスが良いはずだが、特に体感として違いはなかった。
-    // with_fixed_int_encoding() を使わないと、フロントエンド側でデコードできなかった
-
     Ok(Response::new(binarized_ambient_condition))
 }
