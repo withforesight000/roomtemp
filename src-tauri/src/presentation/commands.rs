@@ -11,8 +11,6 @@ use crate::infrastructure::grpc_client;
 use crate::presentation::ui_error::{self, UIError};
 use crate::repository::diesel_settings_repository::DieselSettingsRepository;
 
-// Tauri の tauri::generate_handler! マクロ経由で実際には使われている
-#[allow(dead_code)]
 #[tauri::command]
 pub fn get_settings(state: State<AppState>) -> Result<Settings, UIError> {
     let conn = state.pool.get()?;
@@ -24,7 +22,6 @@ pub fn get_settings(state: State<AppState>) -> Result<Settings, UIError> {
     }
 }
 
-#[allow(dead_code)]
 #[tauri::command]
 pub fn set_settings(
     state: State<AppState>,
@@ -40,7 +37,6 @@ pub fn set_settings(
     Ok(())
 }
 
-#[allow(dead_code)]
 #[tauri::command]
 pub async fn connect_to_grpc_server(state: State<'_, AppState>) -> Result<String, UIError> {
     let settings = get_settings(state.clone())?;
@@ -58,7 +54,6 @@ pub async fn connect_to_grpc_server(state: State<'_, AppState>) -> Result<String
     Ok("Connected to gRPC server".into())
 }
 
-#[allow(dead_code)]
 #[tauri::command]
 pub async fn get_graph_data(
     state: State<'_, AppState>,

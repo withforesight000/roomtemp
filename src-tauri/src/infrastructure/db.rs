@@ -6,14 +6,8 @@ use tauri::{AppHandle, Manager as _};
 
 pub type DbPool = Pool<ConnectionManager<SqliteConnection>>;
 
-// Tauri の tauri::Builder::default().setup() に渡すクロージャ内で実際には使われている
-/// embed_migrations! マクロで、migrations 配下のマイグレーションを組み込みます。
-#[allow(dead_code)]
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("src/migration");
 
-// Tauri の tauri::generate_handler! マクロ経由で実際には使われている
-/// DB 接続プールの作成（app_data_dir を利用して安全な場所に DB ファイルを配置）
-#[allow(dead_code)]
 pub fn establish_connection_pool(app_handle: &AppHandle) -> DbPool {
     // AppHandle 経由で PathResolver の app_data_dir() を取得
     let app_data: PathBuf = app_handle
@@ -32,9 +26,6 @@ pub fn establish_connection_pool(app_handle: &AppHandle) -> DbPool {
         .expect("Failed to create DB pool")
 }
 
-// Tauri の tauri::generate_handler! マクロ経由で実際には使われている
-/// マイグレーションの実行
-#[allow(dead_code)]
 pub fn run_migrations(pool: &DbPool) {
     let mut conn = pool.get().expect("Failed to get connection for migrations");
     conn.run_pending_migrations(MIGRATIONS)
