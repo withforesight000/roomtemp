@@ -7,7 +7,10 @@
     "build": "next build --turbopack",
     "start": "next start",
     "lint": "next lint",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "test:e2e": "pnpm exec playwright test --config src/e2e/playwright.config.ts",
+    "test:rust": "(cd src-tauri && cargo test)",
+    "test:rust:coverage": "(cd src-tauri && cargo llvm-cov --workspace --lcov --output-path lcov.info)"
   },
   "dependencies": {
     "@protobuf-ts/runtime": "^2.11.1",
@@ -44,6 +47,7 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.3",
     "@protobuf-ts/plugin": "^2.11.1",
+    "@playwright/test": "^1.50.0",
     "@tauri-apps/cli": "^2.9.5",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.7",

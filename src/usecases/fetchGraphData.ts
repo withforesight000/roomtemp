@@ -8,7 +8,7 @@ export class FetchGraphData {
   async execute(startDate: Date, endDate: Date): Promise<GraphData> {
     const buffer = await this.repo.fetchGraphData(startDate, endDate);
 
-    const data = decodeIntoGraphData(buffer);
+    const data = await decodeIntoGraphData(buffer);
     return data;
   }
 }
