@@ -76,10 +76,21 @@ Note: `cargo-llvm-cov` is required; install it with `cargo install cargo-llvm-co
 
 ### Linting
 
+The `pnpm run lint` script currently runs a TypeScript type-check (`tsc --noEmit`) to surface type errors.
+
+Run the type-check:
+
 ```bash
-pnpm lint
+pnpm run lint
 ```
 
+If you want to run ESLint directly (experimental in this repo), use:
+
+```bash
+pnpm run lint:eslint
+```
+
+Note: The repository uses a hybrid ESLint setup; if `pnpm run lint:eslint` fails due to configuration incompatibilities, use the TypeScript checks above or run the Next-integrated lint in the `src/` directory if needed.
 ### Configure the gRPC endpoint
 
 1. Launch the app with `pnpm tauri dev`.
