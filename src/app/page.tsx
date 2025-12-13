@@ -22,13 +22,13 @@ export default function Home() {
           <div className="flex-1 flex-column gap-2">
             <p>Start Time</p>
             <DateTimePicker24h
-              date={start}
+              value={start}
               onChange={(start) => setStart(start)}
             />
           </div>
           <div className="flex-1 flex-column gap-2">
             <p>End Time</p>
-            <DateTimePicker24h date={end} onChange={(end) => setEnd(end)} />
+            <DateTimePicker24h value={end} onChange={(end) => setEnd(end)} />
           </div>
         </div>
         <Button onClick={() => fetch(start, end)} disabled={loading}>

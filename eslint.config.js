@@ -19,8 +19,8 @@ module.exports = [
       "react-hooks": require("eslint-plugin-react-hooks"),
     },
     rules: {
-      "no-unused-vars": "warn",
-      "@typescript-eslint/no-unused-vars": ["warn"],
+      "no-unused-vars": "off",
+      "@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
       "react/react-in-jsx-scope": "off",
       "react-hooks/rules-of-hooks": "error",
       "react-hooks/exhaustive-deps": "warn",

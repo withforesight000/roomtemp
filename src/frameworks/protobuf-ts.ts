@@ -17,7 +17,7 @@ export async function decodeIntoGraphData(
       const message = GetAmbientConditionsResponse.fromBinary(bytes);
       return new Map(Object.entries(message.ambientConditions)) as GraphData;
     }
-  } catch (err) {
+  } catch {
     // ignore and fall back to JSON
   }
 
@@ -26,7 +26,7 @@ export async function decodeIntoGraphData(
     const s = new TextDecoder().decode(buffer);
     const obj = JSON.parse(s);
     return new Map(Object.entries(obj)) as GraphData;
-  } catch (err) {
+  } catch {
     // As a last resort, return an empty map
     return new Map();
   }

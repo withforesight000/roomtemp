@@ -37,7 +37,7 @@ export default function SettingsPage() {
 
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
 
   return (
     <Card className="w-full">

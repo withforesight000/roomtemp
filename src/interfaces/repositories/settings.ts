@@ -3,7 +3,7 @@ import { Settings } from "@/domain/types";
 
 export interface SettingsRepository {
   load(): Promise<Settings>;
-  save(settings: Settings): Promise<void>;
+  save(_settings: Settings): Promise<void>;
 }
 
 export class SettingsRepositoryImpl implements SettingsRepository {

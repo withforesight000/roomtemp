@@ -13,8 +13,8 @@ module.exports = {
   env: { browser: true, node: true, es2024: true },
   rules: {
     // minimal baseline
-    "no-unused-vars": "warn",
-    "@typescript-eslint/no-unused-vars": ["warn"],
+    "no-unused-vars": "off",
+    "@typescript-eslint/no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }],
     "react/react-in-jsx-scope": "off",
     "react-hooks/rules-of-hooks": "error",
     "react-hooks/exhaustive-deps": "warn",

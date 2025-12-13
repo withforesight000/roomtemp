@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState } from "react";
 
 import { FetchGraphData } from "@/usecases/fetchGraphData";
 import { GrpcRepositoryImpl } from "@/interfaces/repositories/grpc";
@@ -8,8 +8,7 @@ import {
 } from "@/interfaces/presenters/graphPresenter";
 
 export function useGraphData(grpcRepo: GrpcRepositoryImpl) {
-  const [connectivityStatus, setConnectivityStatus] =
-    useState<string>("Disconnected");
+  const [connectivityStatus] = useState<string>("Disconnected");
   const [data, setData] = useState<RechartPoint[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

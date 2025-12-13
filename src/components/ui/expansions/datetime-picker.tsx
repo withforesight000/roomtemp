@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/popover";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
-export function DateTimePicker24h({ date, onChange }: { date: Date; onChange: (date: Date) => void }) {
+export function DateTimePicker24h({ value, onChange }: { value?: Date; onChange: (_date: Date) => void }) {
   const [isOpen, setIsOpen] = React.useState(false);
 
   const hours = Array.from({ length: 24 }, (_, i) => i);
@@ -26,14 +26,14 @@ export function DateTimePicker24h({ date, onChange }: { date: Date; onChange: (d
 
   const handleTimeChange = (
     type: "hour" | "minute",
-    value: string
+    val: string
   ) => {
-    if (date) {
-      const newDate = new Date(date);
+    if (value) {
+      const newDate = new Date(value);
       if (type === "hour") {
-        newDate.setHours(parseInt(value));
+        newDate.setHours(parseInt(val));
       } else if (type === "minute") {
-        newDate.setMinutes(parseInt(value));
+        newDate.setMinutes(parseInt(val));
       }
       onChange(newDate);
     }
@@ -46,12 +46,12 @@ export function DateTimePicker24h({ date, onChange }: { date: Date; onChange: (d
           variant="outline"
           className={cn(
             "w-full justify-start text-left font-normal",
-            !date && "text-muted-foreground"
+            !value && "text-muted-foreground"
           )}
         >
           <CalendarIcon className="mr-2 h-4 w-4" />
-          {date ? (
-            format(date, "MM/dd/yyyy HH:mm")
+          {value ? (
+            format(value, "MM/dd/yyyy HH:mm")
           ) : (
             <span>MM/DD/YYYY HH:mm</span>
           )}
@@ -61,7 +61,7 @@ export function DateTimePicker24h({ date, onChange }: { date: Date; onChange: (d
         <div className="sm:flex">
           <Calendar
             mode="single"
-            selected={date}
+            selected={value}
             onSelect={handleDateSelect}
             initialFocus
           />
@@ -72,7 +72,7 @@ export function DateTimePicker24h({ date, onChange }: { date: Date; onChange: (d
                   <Button
                     key={hour}
                     size="icon"
-                    variant={date && date.getHours() === hour ? "default" : "ghost"}
+                    variant={value && value.getHours() === hour ? "default" : "ghost"}
                     className="sm:w-full shrink-0 aspect-square"
                     onClick={() => handleTimeChange("hour", hour.toString())}
                   >
@@ -88,7 +88,7 @@ export function DateTimePicker24h({ date, onChange }: { date: Date; onChange: (d
                   <Button
                     key={minute}
                     size="icon"
-                    variant={date && date.getMinutes() === minute ? "default" : "ghost"}
+                    variant={value && value.getMinutes() === minute ? "default" : "ghost"}
                     className="sm:w-full shrink-0 aspect-square"
                     onClick={() => handleTimeChange("minute", minute.toString())}
                   >

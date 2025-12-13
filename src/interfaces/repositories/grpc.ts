@@ -2,7 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 
 export interface GrpcRepository {
   connect(): Promise<string>;
-  fetchGraphData(startDate: Date, endDate: Date): Promise<ArrayBuffer>;
+  fetchGraphData(_startDate: Date, _endDate: Date): Promise<ArrayBuffer>;
 }
 
 export class GrpcRepositoryImpl implements GrpcRepository {
