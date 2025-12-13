@@ -1,4 +1,4 @@
-import { useReducer } from "react";
+import { useCallback, useReducer } from "react";
 import { SettingsRepository } from "@/interfaces/repositories/settings";
 import { Settings } from "@/domain/types";
 
@@ -30,16 +30,16 @@ export function useSettings(repo: SettingsRepository) {
     error: undefined,
   } as State);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     try {
       const settings = await repo.load();
       dispatch({ type: "LOAD", payload: settings });
     } catch (error: any) {
       dispatch({ type: "SET_ERROR", payload: { error: error.message } });
     }
-  };
+  }, [repo]);
 
-  const save = async () => {
+  const save = useCallback(async () => {
     try {
       await repo.save({
         url: state.url,
@@ -51,7 +51,7 @@ export function useSettings(repo: SettingsRepository) {
     } catch (error: any) {
       dispatch({ type: "SET_ERROR", payload: { error: error.message } });
     }
-  };
+  }, [repo, state.accessToken, state.proxyUrl, state.url, state.useProxies]);
 
   return { state, dispatch, load, save };
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { CalendarIcon } from "@radix-ui/react-icons"
+import { CalendarIcon } from "@radix-ui/react-icons";
 import { format } from "date-fns";
 
 import { cn } from "@/lib/utils";
@@ -14,7 +14,13 @@ import {
 } from "@/components/ui/popover";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
-export function DateTimePicker24h({ value, onChange }: { value?: Date; onChange: (_date: Date) => void }) {
+export function DateTimePicker24h({
+  value,
+  onChange,
+}: {
+  value?: Date;
+  onChange: (_date: Date) => void;
+}) {
   const [isOpen, setIsOpen] = React.useState(false);
 
   const hours = Array.from({ length: 24 }, (_, i) => i);
@@ -24,10 +30,7 @@ export function DateTimePicker24h({ value, onChange }: { value?: Date; onChange:
     }
   };
 
-  const handleTimeChange = (
-    type: "hour" | "minute",
-    val: string
-  ) => {
+  const handleTimeChange = (type: "hour" | "minute", val: string) => {
     if (value) {
       const newDate = new Date(value);
       if (type === "hour") {
@@ -72,7 +75,9 @@ export function DateTimePicker24h({ value, onChange }: { value?: Date; onChange:
                   <Button
                     key={hour}
                     size="icon"
-                    variant={value && value.getHours() === hour ? "default" : "ghost"}
+                    variant={
+                      value && value.getHours() === hour ? "default" : "ghost"
+                    }
                     className="sm:w-full shrink-0 aspect-square"
                     onClick={() => handleTimeChange("hour", hour.toString())}
                   >
@@ -88,11 +93,17 @@ export function DateTimePicker24h({ value, onChange }: { value?: Date; onChange:
                   <Button
                     key={minute}
                     size="icon"
-                    variant={value && value.getMinutes() === minute ? "default" : "ghost"}
+                    variant={
+                      value && value.getMinutes() === minute
+                        ? "default"
+                        : "ghost"
+                    }
                     className="sm:w-full shrink-0 aspect-square"
-                    onClick={() => handleTimeChange("minute", minute.toString())}
+                    onClick={() =>
+                      handleTimeChange("minute", minute.toString())
+                    }
                   >
-                    {minute.toString().padStart(2, '0')}
+                    {minute.toString().padStart(2, "0")}
                   </Button>
                 ))}
               </div>

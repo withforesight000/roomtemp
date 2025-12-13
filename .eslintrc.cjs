@@ -14,7 +14,7 @@ module.exports = {
   rules: {
     // minimal baseline
     "no-unused-vars": "off",
-    "@typescript-eslint/no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }],
+    "@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
     "react/react-in-jsx-scope": "off",
     "react-hooks/rules-of-hooks": "error",
     "react-hooks/exhaustive-deps": "warn",
