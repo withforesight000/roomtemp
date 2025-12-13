@@ -25,6 +25,9 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Enable corepack (pnpm)
+        run: corepack enable
+
       - name: Install dependencies
         run: pnpm install
 
@@ -42,6 +45,7 @@ jobs:
       - name: Upload Playwright report (if any)
         if: always()
         uses: actions/upload-artifact@v4
+        continue-on-error: true
         with:
           name: playwright-report
           path: playwright-report/
@@ -68,6 +72,9 @@ jobs:
         working-directory: src-tauri
         run: cargo test --workspace --all-features --verbose
 
+      - name: Install LLVM (for coverage)
+        run: sudo apt-get update && sudo apt-get install -y llvm clang lld
+
       - name: Install cargo-llvm-cov
         run: cargo install cargo-llvm-cov --locked
         working-directory: src-tauri
@@ -76,6 +83,17 @@ jobs:
         working-directory: src-tauri
         run: cargo llvm-cov --workspace --lcov --output-path lcov.info
 
+      - name: Upload lcov
+        if: always()
+        uses: actions/upload-artifact@v4
+        continue-on-error: true
+        with:
+          name: lcov.info
+          path: src-tauri/lcov.info
+
+      - name: Print human-readable coverage summary
+        working-directory: src-tauri
+        run: cargo llvm-cov --workspace --text --show-missing-lines || true
       - name: Upload lcov
         if: always()
         uses: actions/upload-artifact@v4
