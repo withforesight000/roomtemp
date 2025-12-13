@@ -1,4 +1,4 @@
-use base64::{engine::general_purpose::STANDARD, Engine as _};
+use base64::{Engine as _, engine::general_purpose::STANDARD};
 use chacha20poly1305::aead::rand_core::RngCore as _;
 use once_cell::sync::OnceCell;
 use thiserror::Error;
@@ -6,9 +6,45 @@ use thiserror::Error;
 type PlatformError = Box<dyn std::error::Error + Send + Sync>;
 
 static SERVICE: OnceCell<String> = OnceCell::new();
+// Test override for key material. When set, `get_or_create_key` will return this.
+#[cfg(test)]
+static TEST_KEY_OVERRIDE: OnceCell<[u8; 32]> = OnceCell::new();
 
 pub fn init_service(name: &str) {
     SERVICE.set(name.to_string()).ok();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn init_service_and_test_override() {
+        init_service("test-service");
+        let _ = KeyStore::set_test_key([7u8; 32]);
+        let k = KeyStore::get_or_create_key().expect("got key");
+        assert_eq!(k.len(), 32);
+    }
+
+    #[test]
+    fn into_fixed_rejects_short_vector() {
+        let v = vec![1u8; 10];
+        let res = KeyStore::into_fixed(v);
+        assert!(matches!(res, Err(KeystoreError::InvalidLength)));
+    }
+
+    #[test]
+    fn generate_key_has_correct_length() {
+        let k = KeyStore::generate_key();
+        assert_eq!(k.len(), 32);
+    }
+
+    #[test]
+    fn service_init_sets_value() {
+        init_service("abc-service");
+        // OnceCell may already have been initialized by other tests; just ensure it's non-empty.
+        assert!(!service_str().is_empty());
+    }
 }
 
 fn service_str() -> &'static str {
@@ -77,6 +113,13 @@ impl KeyStore {
     const ACCOUNT: &'static str = "encryption_key_v1";
 
     pub fn get_or_create_key() -> Result<[u8; 32], KeystoreError> {
+        // If test override has been set, use it.
+        #[cfg(test)]
+        {
+            if let Some(k) = TEST_KEY_OVERRIDE.get() {
+                return Ok(*k);
+            }
+        }
         #[cfg(target_os = "android")]
         {
             use keyring_core::Error as KeyringCoreError;
@@ -86,9 +129,9 @@ impl KeyStore {
 
             match entry.get_password() {
                 Ok(b64) => {
-                    let bytes = STANDARD.decode(&b64).map_err(|e| {
-                        KeystoreError::BadDataFormat(b64.into_bytes(), Box::new(e))
-                    })?;
+                    let bytes = STANDARD
+                        .decode(&b64)
+                        .map_err(|e| KeystoreError::BadDataFormat(b64.into_bytes(), Box::new(e)))?;
                     return Self::into_fixed(bytes);
                 }
                 Err(KeyringCoreError::NoEntry) => {}
@@ -96,22 +139,20 @@ impl KeyStore {
             }
             let key = Self::generate_key();
             let b64 = STANDARD.encode(key);
-            entry
-                .set_password(&b64)
-                .map_err(KeystoreError::from)?;
+            entry.set_password(&b64).map_err(KeystoreError::from)?;
             return Ok(key);
         }
 
         #[cfg(not(target_os = "android"))]
         {
-            let entry = keyring::Entry::new(service_str(), Self::ACCOUNT)
-                .map_err(KeystoreError::from)?;
+            let entry =
+                keyring::Entry::new(service_str(), Self::ACCOUNT).map_err(KeystoreError::from)?;
 
             match entry.get_password() {
                 Ok(b64) => {
-                    let bytes = STANDARD.decode(&b64).map_err(|e| {
-                        KeystoreError::BadDataFormat(b64.into_bytes(), Box::new(e))
-                    })?;
+                    let bytes = STANDARD
+                        .decode(&b64)
+                        .map_err(|e| KeystoreError::BadDataFormat(b64.into_bytes(), Box::new(e)))?;
                     return Self::into_fixed(bytes);
                 }
                 Err(keyring::Error::NoEntry) => {}
@@ -119,11 +160,16 @@ impl KeyStore {
             }
             let key = Self::generate_key();
             let b64 = STANDARD.encode(key);
-            entry
-                .set_password(&b64)
-                .map_err(KeystoreError::from)?;
+            entry.set_password(&b64).map_err(KeystoreError::from)?;
             Ok(key)
         }
+    }
+
+    /// Test helper: override the key returned by `get_or_create_key`.
+    /// Only available in test builds.
+    #[cfg(test)]
+    pub fn set_test_key(key: [u8; 32]) {
+        let _ = TEST_KEY_OVERRIDE.set(key);
     }
 
     fn generate_key() -> [u8; 32] {

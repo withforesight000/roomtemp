@@ -77,11 +77,10 @@ impl SettingsRepository for DieselSettingsRepository {
         let crypt = CryptoBox::new(&key_bytes)?;
 
         if let Some(entity) = result {
-            let access_token = crypt
-                .decrypt_string(
-                    &entity.encrypted_access_token,
-                    &entity.encrypted_access_token_nonce,
-                )?;
+            let access_token = crypt.decrypt_string(
+                &entity.encrypted_access_token,
+                &entity.encrypted_access_token_nonce,
+            )?;
 
             Ok(Some(Settings {
                 id: entity.id,
@@ -91,8 +90,7 @@ impl SettingsRepository for DieselSettingsRepository {
                 proxy_url: entity.proxy_url,
             }))
         } else {
-        let (ciphertext, nonce) = crypt
-            .encrypt_string("")?;
+            let (ciphertext, nonce) = crypt.encrypt_string("")?;
 
             diesel::insert_into(settings)
                 .values(&NewSetting {
@@ -121,12 +119,10 @@ impl SettingsRepository for DieselSettingsRepository {
         let key_bytes = KeyStore::get_or_create_key()?;
         let crypt = CryptoBox::new(&key_bytes)?;
 
-        let (ciphertext, nonce) = crypt
-            .encrypt_string(&setting.access_token)?;
+        let (ciphertext, nonce) = crypt.encrypt_string(&setting.access_token)?;
 
         // 既存レコードの削除（簡易アップサート）
-        diesel::delete(settings.filter(id.eq(1)))
-            .execute(&mut self.conn)?;
+        diesel::delete(settings.filter(id.eq(1))).execute(&mut self.conn)?;
         let new_setting = NewSetting {
             id: 1,
             url: &setting.url,
@@ -139,5 +135,94 @@ impl SettingsRepository for DieselSettingsRepository {
             .values(&new_setting)
             .execute(&mut self.conn)?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::domain::settings::Settings;
+    use crate::infrastructure::keystore::KeyStore;
+    use diesel::connection::SimpleConnection;
+    use diesel::r2d2::ConnectionManager;
+    use diesel::r2d2::Pool;
+    use diesel::sqlite::SqliteConnection;
+    use tempfile::NamedTempFile;
+
+    #[test]
+    fn set_and_get_setting_roundtrip() {
+        // Override keystore to avoid platform dependency
+        let mut key = [0u8; 32];
+        key[0] = 42;
+        KeyStore::set_test_key(key);
+        // create a temporary file and keep it alive for the duration of the test
+        let f = NamedTempFile::new().expect("temp file");
+        let path = f.path().to_str().expect("path");
+        let database_url = path.to_string();
+        let manager = ConnectionManager::<SqliteConnection>::new(database_url);
+        let pool = Pool::builder().build(manager).expect("pool");
+        let mut conn = pool.get().unwrap();
+        // create table matching schema
+        conn.batch_execute(
+            "CREATE TABLE settings (
+                id INTEGER PRIMARY KEY,
+                url TEXT NOT NULL,
+                encrypted_access_token BLOB NOT NULL,
+                encrypted_access_token_nonce BLOB NOT NULL,
+                use_proxies BOOLEAN NOT NULL,
+                proxy_url TEXT NOT NULL
+            );",
+        )
+        .unwrap();
+
+        let conn = pool.get().unwrap();
+        let mut repo = DieselSettingsRepository { conn };
+
+        let s = Settings {
+            id: 1,
+            url: "https://example.com".into(),
+            access_token: "tok".into(),
+            use_proxies: true,
+            proxy_url: "http://p".into(),
+        };
+        repo.set(s.clone()).expect("set ok");
+
+        // New connection / repo to ensure persistence
+        let conn2 = pool.get().unwrap();
+        let mut repo2 = DieselSettingsRepository { conn: conn2 };
+        let got = repo2.get().expect("get ok").expect("some");
+
+        assert_eq!(got.url, "https://example.com");
+        assert_eq!(got.use_proxies, true);
+    }
+
+    #[test]
+    fn get_inserts_default_if_missing() {
+        KeyStore::set_test_key([1u8; 32]);
+        let f = NamedTempFile::new().expect("temp file");
+        let path = f.path().to_str().expect("path");
+        let database_url = path.to_string();
+        let manager = ConnectionManager::<SqliteConnection>::new(database_url);
+        let pool = Pool::builder().build(manager).expect("pool");
+        let mut conn = pool.get().unwrap();
+        conn.batch_execute(
+            "CREATE TABLE settings (
+                id INTEGER PRIMARY KEY,
+                url TEXT NOT NULL,
+                encrypted_access_token BLOB NOT NULL,
+                encrypted_access_token_nonce BLOB NOT NULL,
+                use_proxies BOOLEAN NOT NULL,
+                proxy_url TEXT NOT NULL
+            );",
+        )
+        .unwrap();
+
+        let conn = pool.get().unwrap();
+        let mut repo = DieselSettingsRepository { conn };
+
+        let maybe = repo.get().expect("get ok");
+        assert!(maybe.is_some());
+        let s = maybe.unwrap();
+        assert_eq!(s.id, 1);
     }
 }
