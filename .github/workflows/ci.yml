@@ -34,8 +34,11 @@ jobs:
       - name: Install Playwright browsers
         run: pnpm exec playwright install --with-deps
 
-      - name: Run linter
-        run: pnpm lint
+      - name: Run typecheck
+        run: pnpm run typecheck
+
+      - name: Run ESLint
+        run: pnpm run lint:eslint
 
       - name: Run Playwright E2E
         env:
