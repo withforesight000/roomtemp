@@ -8,7 +8,7 @@ on:
 
 jobs:
   frontend-e2e:
-    name: Frontend: lint & E2E
+    name: "Frontend: lint & E2E"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -51,7 +51,7 @@ jobs:
           path: playwright-report/
 
   rust-tests:
-    name: Rust: tests & coverage
+    name: "Rust: tests & coverage"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -87,16 +87,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         continue-on-error: true
-        with:
-          name: lcov.info
-          path: src-tauri/lcov.info
-
-      - name: Print human-readable coverage summary
-        working-directory: src-tauri
-        run: cargo llvm-cov --workspace --text --show-missing-lines || true
-      - name: Upload lcov
-        if: always()
-        uses: actions/upload-artifact@v4
         with:
           name: lcov.info
           path: src-tauri/lcov.info
