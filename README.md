@@ -11,7 +11,7 @@ RoomTemp is a cross-platform desktop and mobile application that visualizes ambi
 
 ## Tech Stack
 
-- **Frontend:** Next.js 15 (App Router), React 19, Tailwind CSS, shadcn/ui, Recharts.
+- **Frontend:** Next.js 16 (App Router), React 19, Tailwind CSS, shadcn/ui, Recharts.
 - **Bridge:** Tauri 2 with IPC commands exposed through `@tauri-apps/api`.
 - **Backend:** Rust 1.82+ (edition 2024), Diesel + SQLite, tonic gRPC client, ChaCha20-Poly1305 encryption.
 - **Proto definitions:** TypeScript bindings from `@withforesight/tempgrpcd-protos` on `withforesight000/protobuf-ts` (HTTPS) and Rust bindings from `tempgrpcd-protos` on `withforesight000/protobuf-rust` (HTTPS).
@@ -33,6 +33,44 @@ pnpm install
 # run the Next.js dev server and Tauri shell together
 pnpm tauri dev
 ```
+
+## Testing
+
+### Frontend E2E (Playwright)
+
+Playwright-based end-to-end tests live under `src/e2e` and include a small Tauri IPC mock to make tests deterministic.
+
+Install Playwright browsers once:
+
+```bash
+pnpm exec playwright install --with-deps
+```
+
+Run E2E tests:
+
+```bash
+pnpm test:e2e
+```
+
+The Playwright config will start the Next.js dev server automatically for the tests.
+
+### Rust unit tests & coverage
+
+Rust unit tests live under `src-tauri`. Convenient npm scripts have been added for running them from the repository root:
+
+```bash
+pnpm test:rust           # runs `cd src-tauri && cargo test`
+pnpm test:rust:coverage  # runs `cd src-tauri && cargo llvm-cov --workspace --lcov --output-path lcov.info`
+```
+
+If you want a quick human-readable coverage output on stdout, run:
+
+```bash
+cd src-tauri
+cargo llvm-cov --workspace --text --show-missing-lines
+```
+
+Note: `cargo-llvm-cov` is required; install it with `cargo install cargo-llvm-cov` if not already available.
 
 `pnpm tauri dev` automatically runs the Next.js development server defined in the Tauri configuration and opens the Tauri window once the frontend is ready.
 
@@ -99,7 +137,6 @@ Consult the Tauri mobile documentation for iOS setup; configuration entries are 
 
 ## Troubleshooting
 
-- **Proto package fetch fails:** confirm Git can reach the `withforesight000/protobuf-ts` and `withforesight000/protobuf-rust` repositories.
 - **gRPC transport errors:** verify endpoint URL, TLS certificate, proxy settings, and access token validity.
 - **Keychain/Keystore issues:** ensure the app has permission to access secure storage on the host OS (macOS and mobile may require explicit consent).
 
