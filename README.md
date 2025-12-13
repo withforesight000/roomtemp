@@ -141,3 +141,5 @@ Consult the Tauri mobile documentation for iOS setup; configuration entries are 
 - **Keychain/Keystore issues:** ensure the app has permission to access secure storage on the host OS (macOS and mobile may require explicit consent).
 
 Happy hacking!
+
+**Continuous Integration**: A GitHub Actions workflow runs on push and pull requests. It performs linting, Playwright E2E tests, Rust unit tests, and generates an `lcov.info` coverage artifact (uploaded on CI runs). See `.github/workflows/ci.yml` for details.
