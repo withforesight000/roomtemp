@@ -36,23 +36,38 @@ pnpm tauri dev
 
 ## Testing
 
-### Frontend E2E (Playwright)
+### Frontend E2E (Tauri WebDriver)
 
-Playwright-based end-to-end tests live under `src/e2e` and include a small Tauri IPC mock to make tests deterministic.
+WebDriver-driven end-to-end tests run against the real Tauri shell through the `tauri-driver` binary (`src-tauri/webdriver/test/test.js`). The suite enables `NEXT_PUBLIC_TAURI_WEBDRIVER_MOCKS` during the build so the UI always receives deterministic mock data without touching an external gRPC server.
 
-Install Playwright browsers once:
+Before running the suite install the WebDriver stack:
 
 ```bash
-pnpm exec playwright install --with-deps
+cargo install tauri-driver --locked
 ```
 
-Run E2E tests:
+Make sure the appropriate native driver is available on `PATH` (WebKitWebDriver on Linux, `msedgedriver` on Windows) or provide a custom path via `TAURI_DRIVER_PATH`.
+
+#### Running the suite inside Docker (macOS)
+
+`tauri-driver` is not supported natively on macOS, so run the tests inside the Linux container defined at `docker/webdriver.Dockerfile`. The image bundles Node.js, Rust, `tauri-driver`, and `webkit2gtk-driver`, and the helper script runs `xvfb` so the WebView can start headlessly:
+
+```bash
+docker build -t roomtemp-webdriver -f docker/webdriver.Dockerfile .
+docker run --rm -it \
+  -v "$PWD":/workspace \
+  -w /workspace \
+  roomtemp-webdriver \
+  ./docker/run-webdriver.sh
+```
+
+Run the suite through the helper script:
 
 ```bash
 pnpm test:e2e
 ```
 
-The Playwright config will start the Next.js dev server automatically for the tests.
+`pnpm test:e2e` will build the Tauri app with the mock flag, start `tauri-driver` on port 4444, and execute the Mocha test harness through Selenium.
 
 ### Rust unit tests & coverage
 
@@ -153,4 +168,4 @@ Consult the Tauri mobile documentation for iOS setup; configuration entries are 
 
 Happy hacking!
 
-**Continuous Integration**: A GitHub Actions workflow runs on push and pull requests. It performs linting, Playwright E2E tests, Rust unit tests, and generates an `lcov.info` coverage artifact (uploaded on CI runs). See `.github/workflows/ci.yml` for details.
+**Continuous Integration**: A GitHub Actions workflow runs on push and pull requests. It performs linting, the Tauri WebDriver end-to-end suite, Rust unit tests, and generates an `lcov.info` coverage artifact (uploaded on CI runs). See `.github/workflows/ci.yml` for details.

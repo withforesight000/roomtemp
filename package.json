@@ -11,9 +11,10 @@
     "lint": "pnpm run typecheck && pnpm run lint:eslint",
     "lint:next": "cd src && node ../node_modules/next/dist/bin/next lint",
     "tauri": "tauri",
-    "test:e2e": "pnpm exec playwright test --config src/e2e/playwright.config.ts",
+    "test:e2e": "pnpm run webdriver:e2e",
     "test:rust": "(cd src-tauri && cargo test)",
-    "test:rust:coverage": "(cd src-tauri && cargo llvm-cov --workspace --lcov --output-path lcov.info)"
+    "test:rust:coverage": "(cd src-tauri && cargo llvm-cov --workspace)",
+    "webdriver:e2e": "mocha src-tauri/webdriver/test/test.js"
   },
   "dependencies": {
     "@protobuf-ts/runtime": "^2.11.1",
@@ -28,6 +29,7 @@
     "@radix-ui/react-separator": "^1.1.8",
     "@radix-ui/react-slot": "^1.2.4",
     "@radix-ui/react-tooltip": "^1.2.8",
+    "@radix-ui/primitive": "^1.0.6",
     "@tailwindcss/postcss": "^4.1.18",
     "@tauri-apps/api": "^2.9.1",
     "@withforesight/tempgrpcd-protos": "github:withforesight000/protobuf-ts#main&path:/packages/tempgrpcd-protos",
@@ -49,7 +51,9 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.3",
-    "@playwright/test": "^1.57.0",
+    "chai": "^5.2.1",
+    "mocha": "^11.7.1",
+    "selenium-webdriver": "^4.34.0",
     "@protobuf-ts/plugin": "^2.11.1",
     "@tauri-apps/cli": "^2.9.6",
     "@types/node": "^25.0.1",
