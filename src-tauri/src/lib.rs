@@ -18,15 +18,14 @@ use crate::infrastructure::keystore;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    #[cfg(target_os = "android")]
-    android_native_keyring_store::set_android_keyring_credential_builder()
-        .expect("android-keyring init failed");
-
     tauri::Builder::default()
         .setup(|app| {
             let identifier = app.config().identifier.as_str();
             println!("App Identifier: {}", identifier);
             keystore::init_service(identifier);
+            // TODO: refactor about how to init the default store for Android;
+            // this is required before any keyring operations.
+            keystore::init_default_store_for_android();
             // AppHandle を渡して DB 接続プールを生成
             let pool = establish_connection_pool(app.handle());
             // マイグレーションの実行

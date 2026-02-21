@@ -22,12 +22,7 @@ tauri-build = { version = "2", features = [] }
 tonic-prost-build = "0.14"
 
 [dependencies]
-# [target.'cfg(target_os = "android")'.dependencies]
-android-native-keyring-store = { version = "0.4", features = ["ndk-context"] }
-# ndk-context = { version = "0.1" }
-keyring-core = "0"
-# [target.'cfg(not(target_os = "android"))'.dependencies]
-
+# core crates used on all platforms
 base64 = "0"
 chacha20poly1305 = "0.10"
 diesel = { version = "2", features = ["r2d2", "sqlite"] }
@@ -35,7 +30,6 @@ diesel_migrations = "2"
 http = "1"
 hyper-http-proxy = "1.1"
 hyper-util = "0.1"
-keyring = { version = "3", features = ["apple-native", "windows-native", "linux-native", "crypto-rust"] }
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 libsqlite3-sys = { version = "0.35", features = ["bundled"] }
@@ -61,6 +55,18 @@ rustls = { version = "0.23", default-features = false, features = [
 ] }
 thiserror = "2"
 url = "2"
+
+[target.'cfg(target_os = "android")'.dependencies]
+android-native-keyring-store = { version = "0.4", features = ["ndk-context"] }
+# we only use keyring-core on Android and need to match the version used by
+# android-native-keyring-store to avoid duplicate-semver errors. 0.6.x is
+# what the store crate depends on, so constrain ourselves to the same series.
+keyring-core = "0.6"
+
+[target.'cfg(not(target_os = "android"))'.dependencies]
+# keyring crate is only pulled in for non-Android platforms; its own
+# dependency on keyring-core 0.7 will not affect Android builds.
+keyring = { version = "3", features = ["apple-native", "windows-native", "linux-native", "crypto-rust"] }
 
 [dev-dependencies]
 mockall = "0.12"
