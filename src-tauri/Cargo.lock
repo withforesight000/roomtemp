@@ -61,7 +61,7 @@ checksum = "0703110a012529cf7a018714adc8b99b47cae6ab95371f0f7b9a2243b6328bb3"
 dependencies = [
  "base64 0.22.1",
  "jni",
- "keyring-core 0.6.0",
+ "keyring-core",
  "ndk-context",
  "thiserror 2.0.17",
  "tracing",
@@ -101,7 +101,7 @@ dependencies = [
  "hyper-http-proxy",
  "hyper-util",
  "keyring",
- "keyring-core 0.7.1",
+ "keyring-core",
  "libsqlite3-sys",
  "mockall",
  "once_cell",
@@ -2227,15 +2227,6 @@ name = "keyring-core"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "95c88c9f6a100174c2303fe51bb24749978951cb1c6d9c817349d0beb8f3ab24"
-dependencies = [
- "log",
-]
-
-[[package]]
-name = "keyring-core"
-version = "0.7.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c9e072725d9cb9cf27d5ab18ce54e1cc2e2a51e0da2db7f56a493e71c7c6f449"
 dependencies = [
  "log",
 ]

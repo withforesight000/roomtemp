@@ -14,6 +14,16 @@ pub fn init_service(name: &str) {
     SERVICE.set(name.to_string()).ok();
 }
 
+pub fn init_default_store_for_android() {
+    #[cfg(target_os = "android")]
+    {
+        keyring_core::set_default_store(
+            android_native_keyring_store::AndroidStore::from_ndk_context()
+                .expect("android-keyring init failed"),
+        );
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
