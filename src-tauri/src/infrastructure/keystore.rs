@@ -90,7 +90,6 @@ pub struct KeyStore;
 #[cfg(not(target_os = "android"))]
 impl From<keyring::Error> for KeystoreError {
     fn from(err: keyring::Error) -> Self {
-        eprintln!("keyring error: {err:?}");
         match err {
             keyring::Error::PlatformFailure(inner) => KeystoreError::PlatformFailure(inner),
             keyring::Error::NoStorageAccess(inner) => KeystoreError::NoStorageAccess(inner),
@@ -107,7 +106,6 @@ impl From<keyring::Error> for KeystoreError {
 #[cfg(target_os = "android")]
 impl From<keyring_core::Error> for KeystoreError {
     fn from(err: keyring_core::Error) -> Self {
-        eprintln!("keyring error: {err}");
         match err {
             keyring_core::Error::PlatformFailure(inner) => KeystoreError::PlatformFailure(inner),
             keyring_core::Error::NoStorageAccess(inner) => KeystoreError::NoStorageAccess(inner),
