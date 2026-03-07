@@ -50,6 +50,7 @@ pub async fn new(
     settings: &Settings,
 ) -> Result<TempgrpcdServiceClient<InterceptedService<Channel, AuthInterceptor>>, GrpcClientError> {
     let url = Url::parse(&settings.url)?;
+    let token = MetadataValue::from_str(&format!("Bearer {}", &settings.access_token))?;
     let tls_config = ClientTlsConfig::new()
         .with_enabled_roots()
         .domain_name(url.host_str().unwrap_or(""));
@@ -72,9 +73,7 @@ pub async fn new(
         endpoint.connect().await?
     };
 
-    let interceptor = AuthInterceptor {
-        token: MetadataValue::from_str(&format!("Bearer {}", &settings.access_token))?,
-    };
+    let interceptor = AuthInterceptor { token };
     let client = TempgrpcdServiceClient::with_interceptor(channel, interceptor);
 
     Ok(client)
