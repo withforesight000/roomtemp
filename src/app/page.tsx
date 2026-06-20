@@ -35,22 +35,25 @@ export default function Home() {
           Fetch Data
         </Button>
         {error && <p className="text-red-500">{error}</p>}
-        {data && (
+        {data.length > 0 && (
           <GraphChart
+            key={`temperature-${data[0]?.time ?? "empty"}-${data[data.length - 1]?.time ?? "empty"}`}
             data={data}
             dataKey="temperature"
             description="Temperature (℃)"
           />
         )}
-        {data && (
+        {data.length > 0 && (
           <GraphChart
+            key={`humidity-${data[0]?.time ?? "empty"}-${data[data.length - 1]?.time ?? "empty"}`}
             data={data}
             dataKey="humidity"
             description="Humidity (%)"
           />
         )}
-        {data && (
+        {data.length > 0 && (
           <GraphChart
+            key={`illumination-${data[0]?.time ?? "empty"}-${data[data.length - 1]?.time ?? "empty"}`}
             data={data}
             dataKey="illumination"
             description="Illumination (lx)"
