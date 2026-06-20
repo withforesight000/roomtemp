@@ -11,7 +11,7 @@ jobs:
     name: "Frontend: lint & E2E"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Cache pnpm store
         uses: actions/cache@v4
@@ -76,7 +76,7 @@ jobs:
     name: "Rust: tests & coverage"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install packages which are required for tauri
         run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
