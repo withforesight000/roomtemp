@@ -18,8 +18,8 @@ RoomTemp is a cross-platform desktop and mobile application that visualizes ambi
 
 ## Requirements
 
-- Node.js 20 LTS or newer compatible with Next.js 15.
-- pnpm 9 (`corepack enable` recommended).
+- Node.js 20 LTS or newer compatible with Next.js 16.
+- pnpm 11.8.0 (`corepack enable` recommended).
 - Rust toolchain (`rustup`) and the platform prerequisites listed in the [Tauri 2 documentation](https://v2.tauri.app/start/).
 - Git access to GitHub (`withforesight000/protobuf-ts` and `withforesight000/protobuf-rust`) for fetching the shared proto packages.
 - A reachable `tempgrpcd` gRPC server that supports TLS and bearer-token authentication.
