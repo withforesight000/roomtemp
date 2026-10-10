@@ -1,5 +1,5 @@
 use base64::{Engine as _, engine::general_purpose::STANDARD};
-use chacha20poly1305::aead::rand_core::RngCore as _;
+use chacha20poly1305::aead::{Generate, Key};
 use once_cell::sync::OnceCell;
 use thiserror::Error;
 
@@ -183,10 +183,7 @@ impl KeyStore {
     }
 
     fn generate_key() -> [u8; 32] {
-        use chacha20poly1305::aead::rand_core::OsRng;
-        let mut key = [0u8; 32];
-        OsRng.fill_bytes(&mut key);
-        key
+        Key::<chacha20poly1305::ChaCha20Poly1305>::generate().into()
     }
 
     fn into_fixed(bytes: Vec<u8>) -> Result<[u8; 32], KeystoreError> {

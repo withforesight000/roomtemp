@@ -24,7 +24,7 @@ tonic-prost-build = "0.14"
 [dependencies]
 # core crates used on all platforms
 base64 = "0"
-chacha20poly1305 = "0.10"
+chacha20poly1305 = "0.11"
 diesel = { version = "2", features = ["r2d2", "sqlite"] }
 diesel_migrations = "2"
 http = "1"
@@ -32,8 +32,8 @@ hyper-http-proxy = "1.1"
 hyper-util = "0.1"
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
-libsqlite3-sys = { version = "0.35", features = ["bundled"] }
-tauri = { version = "2.8", features = [] }
+libsqlite3-sys = { version = "0.38", features = ["bundled"] }
+tauri = { version = "2.12", features = [] }
 # tauri-plugin-log = "2.6.0"
 tempgrpcd-protos = { git = "https://github.com/withforesight000/protobuf-rust.git", package = "tempgrpcd-protos" }
 tokio = { version = "1", features = ["full"] }
@@ -44,7 +44,7 @@ once_cell = "1"
 pbjson-types = "0.8.0"
 prost = "0.14"
 r2d2 = "0.8"
-rand = "0.9"
+rand = "0.10"
 # https://zenn.dev/myuna/scraps/a1bfaefe24dd24
 # 明示的にrustlsを指定する
 rustls = { version = "0.23", default-features = false, features = [
@@ -69,5 +69,7 @@ keyring-core = "0.6"
 keyring = { version = "3", features = ["apple-native", "windows-native", "linux-native", "crypto-rust"] }
 
 [dev-dependencies]
-mockall = "0.12"
+mockall = "0.15"
 tempfile = "3"
+
+chacha20poly1305_legacy = { package = "chacha20poly1305", version = "0.10.1" }
