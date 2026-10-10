@@ -73,7 +73,11 @@ impl SettingsRepository for DieselSettingsRepository {
             .first::<SettingEntity>(&mut self.conn)
             .optional()?;
 
-        let key_bytes = KeyStore::get_or_create_key()?;
+        let key_bytes = if result.is_some() {
+            KeyStore::get_key()?
+        } else {
+            KeyStore::get_or_create_key()?
+        };
         let crypt = CryptoBox::new(&key_bytes)?;
 
         if let Some(entity) = result {
@@ -116,7 +120,13 @@ impl SettingsRepository for DieselSettingsRepository {
     fn set(&mut self, setting: Settings) -> Result<(), DieselSettingsRepositoryError> {
         use self::schema::settings::dsl::*;
 
-        let key_bytes = KeyStore::get_or_create_key()?;
+        let exists = diesel::select(diesel::dsl::exists(settings.filter(id.eq(1))))
+            .get_result::<bool>(&mut self.conn)?;
+        let key_bytes = if exists {
+            KeyStore::get_key()?
+        } else {
+            KeyStore::get_or_create_key()?
+        };
         let crypt = CryptoBox::new(&key_bytes)?;
 
         let (ciphertext, nonce) = crypt.encrypt_string(&setting.access_token)?;

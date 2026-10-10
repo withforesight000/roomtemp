@@ -22,15 +22,12 @@ const GRAPH_DATA_MAP: GraphData = new Map(
   Object.entries(ambientPayload) as [string, AmbientCondition][]
 );
 
-const GRAPH_DATA_BUFFER = new TextEncoder().encode(
-  JSON.stringify(ambientPayload)
-).buffer;
-
 export function isWebDriverMockEnabled(): boolean {
   return WEBDRIVER_MOCK_FLAG;
 }
 
 export function getMockSettings(): Settings {
+  failMockSettingsOperation("load");
   return { ...MOCK_SETTINGS };
 }
 
@@ -38,6 +35,24 @@ export function getMockGraphData(): GraphData {
   return new Map(GRAPH_DATA_MAP);
 }
 
-export function getMockGraphBuffer(): ArrayBuffer {
-  return GRAPH_DATA_BUFFER.slice(0);
+export async function getMockGraphBuffer(): Promise<ArrayBuffer> {
+  const { GetAmbientConditionsResponse } = await import("@withforesight/tempgrpcd-protos");
+  const bytes = GetAmbientConditionsResponse.toBinary({ ambientConditions: ambientPayload });
+  return Uint8Array.from(bytes).buffer;
+}
+
+// Fault injection is used only by repositories in explicitly enabled mock builds.
+export function failMockSettingsOperation(operation: "load" | "save"): void {
+  if (WEBDRIVER_MOCK_FLAG && typeof window !== "undefined" &&
+      window.sessionStorage.getItem(`roomtemp.mock.settings.${operation}`) === "fail") {
+    throw "Keystore: storage unavailable"; // Tauri serializes UIError as a string.
+  }
+}
+
+export function recordMockConnection(): void {
+  if (WEBDRIVER_MOCK_FLAG && typeof window !== "undefined") {
+    const key = "roomtemp.mock.connections";
+    const count = Number(window.sessionStorage.getItem(key) ?? "0");
+    window.sessionStorage.setItem(key, String(count + 1));
+  }
 }

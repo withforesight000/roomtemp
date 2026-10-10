@@ -41,6 +41,7 @@ tonic = { version = "0.14", features = ["tls-webpki-roots"] }
 tonic-prost = "0.14"
 tonic-reflection = "0.14"
 once_cell = "1"
+keyring-core = "1"
 pbjson-types = "0.8.0"
 prost = "0.14"
 r2d2 = "0.8"
@@ -57,19 +58,25 @@ thiserror = "2"
 url = "2"
 
 [target.'cfg(target_os = "android")'.dependencies]
-android-native-keyring-store = { version = "0.4", features = ["ndk-context"] }
-# we only use keyring-core on Android and need to match the version used by
-# android-native-keyring-store to avoid duplicate-semver errors. 0.6.x is
-# what the store crate depends on, so constrain ourselves to the same series.
-keyring-core = "0.6"
+android-native-keyring-store = { version = "1", features = ["legacy"] }
 
-[target.'cfg(not(target_os = "android"))'.dependencies]
-# keyring crate is only pulled in for non-Android platforms; its own
-# dependency on keyring-core 0.7 will not affect Android builds.
-keyring = { version = "3", features = ["apple-native", "windows-native", "linux-native", "crypto-rust"] }
+[target.'cfg(target_os = "macos")'.dependencies]
+apple-native-keyring-store = { version = "1", features = ["keychain"] }
+
+[target.'cfg(target_os = "ios")'.dependencies]
+apple-native-keyring-store = { version = "1", features = ["protected"] }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+windows-native-keyring-store = "1"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+linux-keyutils-keyring-store = "1"
 
 [dev-dependencies]
 mockall = "0.15"
 tempfile = "3"
 
 chacha20poly1305_legacy = { package = "chacha20poly1305", version = "0.10.1" }
+
+[target.'cfg(target_os = "macos")'.dev-dependencies]
+keyring_legacy = { package = "keyring", version = "3", features = ["apple-native"] }

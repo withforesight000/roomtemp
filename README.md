@@ -13,7 +13,7 @@ RoomTemp is a cross-platform desktop and mobile application that visualizes ambi
 
 - **Frontend:** Next.js 16 (App Router), React 19, Tailwind CSS, shadcn/ui, Recharts.
 - **Bridge:** Tauri 2 with IPC commands exposed through `@tauri-apps/api`.
-- **Backend:** Rust 1.82+ (edition 2024), Diesel + SQLite, tonic gRPC client, ChaCha20-Poly1305 encryption.
+- **Backend:** Rust 1.98.1 (edition 2024; the toolchain used in local checks), Diesel + SQLite, tonic gRPC client, ChaCha20-Poly1305 encryption.
 - **Proto definitions:** TypeScript bindings from `@withforesight/tempgrpcd-protos` on `withforesight000/protobuf-ts` (HTTPS) and Rust bindings from `tempgrpcd-protos` on `withforesight000/protobuf-rust` (HTTPS).
 
 ## Requirements
@@ -135,7 +135,16 @@ Consult the Tauri mobile documentation for iOS setup; configuration entries are 
 ## Data & Security
 
 - Settings persist in a SQLite database created in the OS-specific application data directory.
-- Access tokens are encrypted with ChaCha20-Poly1305; encryption keys are stored via the platform keystore or keychain.
+- Access tokens are encrypted with ChaCha20-Poly1305; encryption keys are stored through keyring-core 1 and the platform-specific native store.
+- macOS keeps the login keychain, iOS keeps protected storage, Windows keeps the existing credential target, and Linux keeps the `keyring-rs:<account>@<service>` keyutils description. Linux keyutils credentials retain their existing lifetime (they are not persistent disk storage).
+- Android reads the named `net.withforesight.roomtemp.credentials.v1` store first. If its key is absent, it copies the legacy key, verifies the saved value, and retains the legacy credential. Existing installations can still use that legacy key when rolling back; keys created by a fresh installation in the named store are not copied back for downgrade compatibility.
+- Missing keys for saved ciphertext, inaccessible storage, malformed keys, and failed migration verification are errors. The app does not silently generate a replacement key for existing encrypted settings. Failed settings saves show an error and do not reconnect.
+
+To explicitly verify macOS provider compatibility using an isolated test credential:
+
+```bash
+cargo test --manifest-path src-tauri/Cargo.toml --locked --lib macos_legacy_provider_preserves_credential_identity -- --ignored
+```
 - gRPC traffic runs over TLS with the host derived from the configured endpoint; bearer tokens are injected with a tonic interceptor.
 
 ## Architecture Overview
