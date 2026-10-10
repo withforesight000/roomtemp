@@ -10,7 +10,9 @@ const MOCK_SETTINGS: Settings = {
 const WEBDRIVER_MOCK_FLAG =
   process.env.NEXT_PUBLIC_TAURI_WEBDRIVER_MOCKS === "1";
 
-const now = Date.now();
+// Keep screenshots and date-picker assertions independent of the wall clock.
+export const MOCK_REFERENCE_TIME = Date.parse("2026-10-01T12:00:00Z");
+const now = MOCK_REFERENCE_TIME;
 const ambientPayload: Record<string, AmbientCondition> = {
   [`${now}-0`]: { temperature: 22.4, humidity: 48, illumination: 120 },
   [`${now + 60_000}-0`]: { temperature: 23.1, humidity: 47, illumination: 118 },

@@ -26,12 +26,12 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version: '24.16.0'
 
       - name: Enable corepack (pnpm)
         run: |
           corepack enable
-          corepack prepare pnpm@11.8.0 --activate
+          corepack prepare pnpm@12.11.2 --activate
 
       - name: Install dependencies
         run: pnpm install
@@ -54,7 +54,9 @@ jobs:
           xvfb
 
       - name: Run typecheck
-        run: pnpm run typecheck
+        run: |
+          pnpm run typecheck
+          pnpm run typecheck:compat
 
       - name: Run ESLint
         run: pnpm run lint:eslint

@@ -1,4 +1,10 @@
 node_modules
+.pnpm-store
+.git
+.vscode
+.zed
+mise.toml
+.env*
 src-tauri/target
 out
 .next

@@ -18,8 +18,8 @@ RoomTemp is a cross-platform desktop and mobile application that visualizes ambi
 
 ## Requirements
 
-- Node.js 20 LTS or newer compatible with Next.js 16.
-- pnpm 11.8.0 (`corepack enable` recommended).
+- Node.js 24.16.0 (the version used in local checks and CI; Node.js 24 is used by the WebDriver container).
+- pnpm 12.11.2 (`corepack enable` recommended).
 - Rust toolchain (`rustup`) and the platform prerequisites listed in the [Tauri 2 documentation](https://v2.tauri.app/start/).
 - Git access to GitHub (`withforesight000/protobuf-ts` and `withforesight000/protobuf-rust`) for fetching the shared proto packages.
 - A reachable `tempgrpcd` gRPC server that supports TLS and bearer-token authentication.
@@ -53,7 +53,7 @@ Make sure the appropriate native driver is available on `PATH` (WebKitWebDriver 
 `tauri-driver` is not supported natively on macOS, so run the tests inside the Linux container defined at `docker/webdriver.Dockerfile`. The image bundles Node.js, Rust, `tauri-driver`, and `webkit2gtk-driver`, and the helper script runs `xvfb` so the WebView can start headlessly:
 
 ```bash
-docker build -t roomtemp-webdriver -f docker/webdriver.Dockerfile .
+docker build --target base -t roomtemp-webdriver -f docker/webdriver.Dockerfile .
 docker run --rm -it \
   -v "$PWD":/workspace \
   -w /workspace \
@@ -91,21 +91,26 @@ Note: `cargo-llvm-cov` is required; install it with `cargo install cargo-llvm-co
 
 ### Linting
 
-The `pnpm run lint` script currently runs a TypeScript type-check (`tsc --noEmit`) to surface type errors.
+`pnpm run lint` runs TypeScript 7 and TypeScript 6 compatibility checks, followed by ESLint.
 
-Run the type-check:
+Run all frontend checks:
 
 ```bash
 pnpm run lint
 ```
 
-If you want to run ESLint directly (experimental in this repo), use:
+To run ESLint directly, use:
 
 ```bash
 pnpm run lint:eslint
 ```
 
-Note: The repository uses a hybrid ESLint setup; if `pnpm run lint:eslint` fails due to configuration incompatibilities, use the TypeScript checks above or run the Next-integrated lint in the `src/` directory if needed.
+TypeScript 7 provides the `tsc` command through the `@typescript/native` alias. The
+`typescript` alias provides the TypeScript 6 API required by Next.js and
+typescript-eslint, and `tsc6` powers `pnpm run typecheck:compat`. ESLint stays on
+the latest compatible 9.x release because eslint-plugin-react does not yet
+support ESLint 10. Neither lint rules nor build-time type checking are disabled.
+
 ### Configure the gRPC endpoint
 
 1. Launch the app with `pnpm tauri dev`.

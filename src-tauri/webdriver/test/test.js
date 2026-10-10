@@ -8,6 +8,7 @@ const ROOT_DIR = path.resolve(__dirname, "..", "..", "..");
 const MOCK_ENV = {
   ...process.env,
   NEXT_PUBLIC_TAURI_WEBDRIVER_MOCKS: "1",
+  TZ: "UTC",
 };
 const APPLICATION_NAME = process.platform === "win32" ? "app.exe" : "app";
 const APPLICATION_TARGET_DIR = path.resolve(ROOT_DIR, "src-tauri", "target");

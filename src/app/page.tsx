@@ -6,13 +6,15 @@ import { GraphChart } from "@/interfaces/react/components/GraphChart";
 import { Button } from "@/components/ui/button";
 import { DateTimePicker24h } from "@/components/ui/expansions/datetime-picker";
 import { GrpcRepoContext } from "@/interfaces/react/contexts/grpcRepoContext";
+import { isWebDriverMockEnabled, MOCK_REFERENCE_TIME } from "@/mocks/webdriver";
 
 export default function Home() {
   const { grpcRepo } = useContext(GrpcRepoContext);
+  const referenceTime = isWebDriverMockEnabled() ? MOCK_REFERENCE_TIME : Date.now();
   const [start, setStart] = useState<Date>(
-    new Date(Date.now() - 6 * 60 * 60 * 1000)
+    new Date(referenceTime - 6 * 60 * 60 * 1000)
   ); // 6 hours ago
-  const [end, setEnd] = useState<Date>(new Date());
+  const [end, setEnd] = useState<Date>(new Date(referenceTime));
   const { data, fetch, loading, error } = useGraphData(grpcRepo);
 
   return (
