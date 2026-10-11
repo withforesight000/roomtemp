@@ -67,14 +67,8 @@ pub async fn get_graph_data(
             .cloned()
             .ok_or_else(|| "gRPC client is not connected".to_string())?
     };
-    let start_timestamp = Timestamp {
-        seconds: start_time as i64,
-        nanos: 0,
-    };
-    let end_timestamp = Timestamp {
-        seconds: end_time as i64,
-        nanos: 0,
-    };
+    let start_timestamp = timestamp_from_epoch_milliseconds(start_time)?;
+    let end_timestamp = timestamp_from_epoch_milliseconds(end_time)?;
 
     let resp = client
         .get_ambient_conditions(tonic::Request::new(GetAmbientConditionsRequest {
@@ -90,6 +84,25 @@ pub async fn get_graph_data(
     let binarized_ambient_condition = resp.into_inner().encode_to_vec();
 
     Ok(Response::new(binarized_ambient_condition))
+}
+
+/// Converts a non-negative Unix epoch millisecond value into a canonical protobuf timestamp.
+///
+/// The frontend and Tauri command retain their millisecond-based interface. This helper
+/// separates whole seconds from the remaining milliseconds and reports values whose seconds
+/// cannot be represented by protobuf's signed field instead of wrapping them.
+fn timestamp_from_epoch_milliseconds(milliseconds: u64) -> Result<Timestamp, String> {
+    const PROTOBUF_MAX_SECONDS: u64 = 253_402_300_799;
+
+    if milliseconds / 1000 > PROTOBUF_MAX_SECONDS {
+        return Err("timestamp milliseconds are outside the supported range".to_string());
+    }
+    let seconds = i64::try_from(milliseconds / 1000)
+        .map_err(|_| "timestamp milliseconds are outside the supported range".to_string())?;
+    let nanos = i32::try_from((milliseconds % 1000) * 1_000_000)
+        .map_err(|_| "timestamp milliseconds are outside the supported range".to_string())?;
+
+    Ok(Timestamp { seconds, nanos })
 }
 
 #[cfg(test)]
@@ -168,6 +181,44 @@ pub mod __tests {
             res.err().unwrap(),
             "gRPC client is not connected".to_string()
         );
+    }
+
+    #[test]
+    fn converts_epoch_milliseconds_to_canonical_timestamp() {
+        let timestamp = timestamp_from_epoch_milliseconds(1_700_000_000_123).unwrap();
+
+        assert_eq!(timestamp.seconds, 1_700_000_000);
+        assert_eq!(timestamp.nanos, 123_000_000);
+    }
+
+    #[test]
+    fn converts_timestamp_boundaries_without_changing_millisecond_precision() {
+        assert_eq!(
+            timestamp_from_epoch_milliseconds(0).unwrap(),
+            Timestamp {
+                seconds: 0,
+                nanos: 0
+            }
+        );
+        assert_eq!(
+            timestamp_from_epoch_milliseconds(999).unwrap(),
+            Timestamp {
+                seconds: 0,
+                nanos: 999_000_000,
+            }
+        );
+        assert_eq!(
+            timestamp_from_epoch_milliseconds(1000).unwrap(),
+            Timestamp {
+                seconds: 1,
+                nanos: 0
+            }
+        );
+    }
+
+    #[test]
+    fn rejects_milliseconds_that_overflow_timestamp_seconds() {
+        assert!(timestamp_from_epoch_milliseconds(u64::MAX).is_err());
     }
 
     #[test]
