@@ -10,13 +10,17 @@ jobs:
   frontend-e2e:
     name: "Frontend: lint & E2E"
     runs-on: ubuntu-latest
+    env:
+      MISE_ENABLE_TOOLS: bun,rust
     steps:
       - uses: actions/checkout@v7
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
+      - name: Setup project tools
+        uses: jdx/mise-action@v5
         with:
-          bun-version-file: .bun-version
+          version: 2026.10.8
+          # Rust toolchains live in RUSTUP_HOME, outside mise-action's tool cache.
+          cache: false
 
       - name: Prepare application tools without Node
         shell: bash
@@ -38,7 +42,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.bun/install/cache
-          key: ${{ runner.os }}-${{ runner.arch }}-bun-${{ hashFiles('.bun-version', 'bun.lock', 'bunfig.toml', 'package.json') }}
+          key: ${{ runner.os }}-${{ runner.arch }}-bun-${{ hashFiles('mise.toml', '.bun-version', 'bun.lock', 'bunfig.toml', 'package.json') }}
 
       - name: Install dependencies
         run: |
@@ -73,15 +77,10 @@ jobs:
           bun --bun run typecheck
           bun --bun run typecheck:compat
 
-      - name: Run ESLint
+      - name: Run Biome
         run: |
           export PATH="$ROOMTEMP_TOOL_PATH"
-          bun --bun run lint:eslint
-
-      - name: Setup Rust toolchain
-        uses: actions-rust-lang/setup-rust-toolchain@v1
-        with:
-          rust-src-dir: src-tauri
+          bun --bun run lint:biome
 
       - uses: cargo-bins/cargo-binstall@main
 
@@ -98,16 +97,20 @@ jobs:
   rust-tests:
     name: "Rust: tests & coverage"
     runs-on: ubuntu-latest
+    env:
+      MISE_ENABLE_TOOLS: rust
     steps:
       - uses: actions/checkout@v7
 
       - name: Install packages which are required for tauri
         run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
 
-      - name: Setup Rust
-        uses: actions-rust-lang/setup-rust-toolchain@v1
+      - name: Setup project tools
+        uses: jdx/mise-action@v5
         with:
-          rust-src-dir: src-tauri
+          version: 2026.10.8
+          # Rust toolchains live in RUSTUP_HOME, outside mise-action's tool cache.
+          cache: false
 
       - uses: cargo-bins/cargo-binstall@main
 

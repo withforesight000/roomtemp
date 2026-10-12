@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useContext, useState } from "react";
+import { useContext, useState } from "react";
 import { useGraphData } from "@/interfaces/react/hooks/useGraphData";
 import { GraphChart } from "@/interfaces/react/components/GraphChart";
 import { Button } from "@/components/ui/button";

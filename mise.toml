@@ -1,0 +1,39 @@
+[tools]
+bun = "1.4.3"
+rust = { version = "1.98.1", profile = "default", components = ["llvm-tools"] }
+
+[tasks.install]
+description = "Install JavaScript dependencies from bun.lock"
+run = "bun install --frozen-lockfile"
+
+[tasks.lint]
+description = "Run both TypeScript checks and Biome"
+run = "bun --bun run lint"
+
+[tasks.build]
+description = "Build the static Next.js export"
+run = "bun --bun run build"
+
+[tasks.dev]
+description = "Start the Next.js dev server and Tauri application"
+run = "bun --bun run tauri dev"
+
+[tasks."test:rust"]
+description = "Run the Rust workspace tests"
+run = "cargo test --manifest-path src-tauri/Cargo.toml --locked --workspace --all-features"
+
+[tasks."test:e2e"]
+description = "Run the Tauri WebDriver suite (requires a supported native driver)"
+run = "bun --bun run test:e2e"
+
+[tasks."tauri:build"]
+description = "Build the desktop application without bundling"
+run = "bun --bun run tauri build --no-bundle"
+
+[tasks."android:setup"]
+description = "Install the Rust target for Android arm64 builds"
+run = "rustup target add aarch64-linux-android"
+
+[tasks."android:build"]
+description = "Build the Android arm64 debug APK (requires SDK, NDK and JDK)"
+run = "bun --bun run tauri android build --debug --target aarch64 --apk"

@@ -13,7 +13,7 @@ RoomTemp is a cross-platform desktop and mobile application that visualizes ambi
 
 - **Frontend:** Next.js 16 (App Router), React 19, Tailwind CSS, shadcn/ui, Recharts.
 - **Bridge:** Tauri 2 with IPC commands exposed through `@tauri-apps/api`.
-- **Backend:** Rust 1.98.1 (edition 2024; the toolchain used in local checks), Diesel + SQLite, tonic gRPC client, ChaCha20-Poly1305 encryption.
+- **Backend:** Rust 1.98.1 (edition 2024; pinned via mise), Diesel + SQLite, tonic gRPC client, ChaCha20-Poly1305 encryption.
 - **Proto definitions:** TypeScript bindings from the versioned `tempgrpcd-protos-v0.1.0` GitHub Release tarball (HTTPS) and Rust bindings from `tempgrpcd-protos` on `withforesight000/protobuf-rust` (HTTPS).
 
 The TypeScript protobuf package is distributed at:
@@ -27,31 +27,37 @@ When updating this package, verify the artifact against `SHA256SUMS`, review its
 
 ## Requirements
 
-- Bun 1.4.3 (pinned in `.bun-version` and `package.json`; Node.js/npm/pnpm are not required for application tooling).
-- Rust toolchain (`rustup`) and the platform prerequisites listed in the [Tauri 2 documentation](https://v2.tauri.app/start/).
+- [mise](https://mise.jdx.dev/getting-started.html) for installing and selecting Bun 1.4.3 and Rust 1.98.1 from the tracked `mise.toml`. Node.js/npm/pnpm are not required for application tooling.
+- The platform prerequisites listed in the [Tauri 2 documentation](https://v2.tauri.app/start/).
 - HTTPS access to GitHub Releases for the TypeScript proto package and Git access to `withforesight000/protobuf-rust` for the Rust proto package.
 - A reachable `tempgrpcd` gRPC server that supports TLS and bearer-token authentication.
 
-Install the pinned Bun version through your version manager, or use the official installer:
+Install mise, then set up the project tools:
 
 ```bash
-curl -fsSL https://bun.com/install | bash -s "bun-v$(cat .bun-version)"
-bun --version
+mise trust
+mise install
+mise exec -- bun --version
+mise exec -- rustc --version
 ```
 
-`bunfig.toml` forces Bun for Node-shebang tools, uses isolated dependency linking, and applies a 24-hour minimum release age to new registry resolutions. Only `protobufjs`, `sharp`, and `unrs-resolver` install scripts are trusted. Commit `bun.lock` alongside dependency changes; retain both TypeScript aliases and review peer resolutions when updating. The protobuf generator's `@typescript/vfs` retains its TypeScript 5.4.5 peer through `@bufbuild/protoplugin`, while Next.js/ESLint use the TypeScript 6 alias.
+`bunfig.toml` forces Bun for Node-shebang tools, uses isolated dependency linking, and applies a 24-hour minimum release age to new registry resolutions. Only `protobufjs`, `sharp`, and `unrs-resolver` install scripts are trusted. Commit `bun.lock` alongside dependency changes; retain both TypeScript aliases and review peer resolutions when updating. The protobuf generator's `@typescript/vfs` retains its TypeScript 5.4.5 peer through `@bufbuild/protoplugin`, while Next.js uses the TypeScript 6 alias.
 
-Local untracked version-manager configuration may override the documented tools; configure Bun 1.4.3 locally without relying on Node or pnpm. GitHub JavaScript actions use the runner's own Node runtime, independently of application tooling.
+Run project tasks with `mise run`, or use `mise exec -- <command>` without shell activation. To run the existing Bun/Cargo commands directly, [activate mise in your shell](https://mise.jdx.dev/cli/activate.html). Machine-specific overrides belong in ignored `mise.local.toml`; do not add Node or pnpm to the project toolchain. GitHub JavaScript actions use the runner's own Node runtime, independently of application tooling.
+
+CI installs tools from `mise.toml` using `jdx/mise-action`. Keep its Bun pin synchronized with `.bun-version`, `package.json` and the Docker image default; keep the Rust pin synchronized with the Docker rustup installer. Rust uses rustup internally, including the `llvm-tools` component needed for coverage. Android SDK/NDK and JDK remain platform prerequisites; configure them as described by Tauri before using the Android tasks.
 
 ## Quick Start
 
 ```bash
 # install dependencies
-bun install --frozen-lockfile
+mise run install
 
 # run the Next.js dev server and Tauri shell together
-bun --bun run tauri dev
+mise run dev
 ```
+
+Other tasks: `mise run lint`, `mise run build`, `mise run test:rust`, `mise run test:e2e`, and `mise run tauri:build`. For Android arm64, run `mise run android:setup` once, then `mise run android:build`. List available tasks with `mise tasks`.
 
 ## Testing
 
@@ -115,7 +121,7 @@ Note: `cargo-llvm-cov` is required; install it with `cargo install cargo-llvm-co
 
 ### Linting
 
-`bun --bun run lint` runs TypeScript 7 and TypeScript 6 compatibility checks, followed by ESLint.
+`mise run lint` runs TypeScript 7 and TypeScript 6 compatibility checks, followed by Biome 2.5.15.
 
 Run all frontend checks:
 
@@ -123,17 +129,22 @@ Run all frontend checks:
 bun --bun run lint
 ```
 
-To run ESLint directly, use:
+To run Biome directly, use:
 
 ```bash
-bun --bun run lint:eslint
+bun --bun run lint:biome
 ```
 
 TypeScript 7 provides the `tsc` command through the `@typescript/native` alias. The
-`typescript` alias provides the TypeScript 6 API required by Next.js and
-typescript-eslint, and `tsc6` powers `bun --bun run typecheck:compat`. ESLint stays on
-the latest compatible 9.x release because eslint-plugin-react does not yet
-support ESLint 10. Neither lint rules nor build-time type checking are disabled.
+`typescript` alias provides the TypeScript 6 API required by Next.js, and `tsc6`
+powers `bun --bun run typecheck:compat`. Both type checks remain enabled.
+
+`biome.json` retains the existing source-file scope and enables the equivalents
+of the previous unused-variable and React Hooks checks, with separate checks for
+unused imports and function parameters. Biome ignores underscore-prefixed unused
+bindings; its diagnostics are not identical to ESLint's. The lint command fails on
+warnings as well as errors (previously ESLint allowed up to 20 warnings). Formatting
+and import organization are disabled; this migration does not reformat the UI.
 
 ### Configure the gRPC endpoint
 
