@@ -31,8 +31,9 @@ export default function SettingsPage() {
   const saveSettings = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     // The save logic is handled in the useSettings hook
-    await save();
-    await connect(); // Reconnect to apply new settings
+    if (await save()) {
+      await connect(); // Reconnect only after settings were saved
+    }
   };
 
   useEffect(() => {

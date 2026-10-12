@@ -23,9 +23,7 @@ pub fn run() {
             let identifier = app.config().identifier.as_str();
             println!("App Identifier: {}", identifier);
             keystore::init_service(identifier);
-            // TODO: refactor about how to init the default store for Android;
-            // this is required before any keyring operations.
-            keystore::init_default_store_for_android();
+            keystore::init_default_store()?;
             // AppHandle を渡して DB 接続プールを生成
             let pool = establish_connection_pool(app.handle());
             // マイグレーションの実行

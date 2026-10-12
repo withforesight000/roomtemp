@@ -8,6 +8,7 @@ const ROOT_DIR = path.resolve(__dirname, "..", "..", "..");
 const MOCK_ENV = {
   ...process.env,
   NEXT_PUBLIC_TAURI_WEBDRIVER_MOCKS: "1",
+  TZ: "UTC",
 };
 const APPLICATION_NAME = process.platform === "win32" ? "app.exe" : "app";
 const APPLICATION_TARGET_DIR = path.resolve(ROOT_DIR, "src-tauri", "target");
@@ -81,6 +82,7 @@ after(async function () {
 });
 
 describe("Dashboard workflow", function () {
+  this.timeout(DRIVER_WAIT * 2);
   it("shows the connection status and navigation controls", async function () {
     const statusElement = await driver.wait(
       until.elementLocated(By.css("header p")),
@@ -133,6 +135,25 @@ describe("Dashboard workflow", function () {
       By.xpath('//button[normalize-space()="Update"]')
     );
     await updateButton.click();
+  });
+
+  it("shows secure-storage load and save errors without reconnecting", async function () {
+    await driver.executeScript('sessionStorage.setItem("roomtemp.mock.settings.load", "fail"); window.location.pathname = "/settings"');
+    await driver.wait(until.elementLocated(By.css('[role="alert"]')), DRIVER_WAIT);
+    expect(await driver.findElement(By.css('[role="alert"]')).getText()).to.include("Keystore: storage unavailable");
+    await driver.executeScript('sessionStorage.removeItem("roomtemp.mock.settings.load"); window.location.reload()');
+    const token = await driver.wait(until.elementLocated(By.css('#access-token')), DRIVER_WAIT);
+    await driver.wait(async () => (await token.getAttribute("value")) === "test-token", DRIVER_WAIT);
+    const connections = await driver.executeScript('return sessionStorage.getItem("roomtemp.mock.connections")');
+    await driver.executeScript('sessionStorage.setItem("roomtemp.mock.settings.save", "fail")');
+    await driver.findElement(By.xpath('//button[normalize-space()="Update"]')).click();
+    await driver.wait(until.elementLocated(By.css('[role="alert"]')), DRIVER_WAIT);
+    expect(await driver.findElement(By.css('[role="alert"]')).getText()).to.include("Keystore: storage unavailable");
+    expect(await driver.executeScript('return sessionStorage.getItem("roomtemp.mock.connections")')).to.equal(connections);
+    await driver.executeScript('sessionStorage.removeItem("roomtemp.mock.settings.save")');
+    await driver.findElement(By.xpath('//button[normalize-space()="Update"]')).click();
+    await driver.wait(async () => Number(await driver.executeScript('return sessionStorage.getItem("roomtemp.mock.connections")')) > Number(connections), DRIVER_WAIT);
+    expect((await driver.findElements(By.css('[role="alert"]'))).length).to.equal(0);
   });
 
   it("renders the charts after fetching graph data", async function () {

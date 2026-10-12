@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import {
   getMockGraphBuffer,
+  recordMockConnection,
   isWebDriverMockEnabled,
 } from "@/mocks/webdriver";
 
@@ -12,6 +13,7 @@ export interface GrpcRepository {
 export class GrpcRepositoryImpl implements GrpcRepository {
   async connect(): Promise<string> {
     if (isWebDriverMockEnabled()) {
+      recordMockConnection();
       return "Mock connected to gRPC server";
     }
     return invoke<string>("connect_to_grpc_server");

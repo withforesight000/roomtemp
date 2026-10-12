@@ -4,6 +4,12 @@ import { Settings } from "@/domain/types";
 
 type State = Settings & { error?: string };
 
+function errorMessage(error: unknown): string {
+  if (typeof error === "string") return error;
+  if (error instanceof Error) return error.message;
+  return "Settings could not be accessed";
+}
+
 function reducer(
   state: State,
   action: { type: string; payload: Partial<State> }
@@ -12,7 +18,6 @@ function reducer(
     case "LOAD":
       return { ...state, ...action.payload, error: undefined };
     case "SET_FIELD":
-      console.log("Setting field:", action.payload);
       return { ...state, ...action.payload };
     case "SET_ERROR":
       return { ...state, error: action.payload.error };
@@ -34,8 +39,8 @@ export function useSettings(repo: SettingsRepository) {
     try {
       const settings = await repo.load();
       dispatch({ type: "LOAD", payload: settings });
-    } catch (error: any) {
-      dispatch({ type: "SET_ERROR", payload: { error: error.message } });
+    } catch (error: unknown) {
+      dispatch({ type: "SET_ERROR", payload: { error: errorMessage(error) } });
     }
   }, [repo]);
 
@@ -48,9 +53,11 @@ export function useSettings(repo: SettingsRepository) {
         proxyUrl: state.proxyUrl,
       });
       dispatch({ type: "SET_ERROR", payload: { error: undefined } });
-    } catch (error: any) {
-      dispatch({ type: "SET_ERROR", payload: { error: error.message } });
+      return true;
+    } catch (error: unknown) {
+      dispatch({ type: "SET_ERROR", payload: { error: errorMessage(error) } });
     }
+    return false;
   }, [repo, state.accessToken, state.proxyUrl, state.url, state.useProxies]);
 
   return { state, dispatch, load, save };

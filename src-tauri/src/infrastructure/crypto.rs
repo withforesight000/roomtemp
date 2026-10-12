@@ -1,5 +1,5 @@
-use chacha20poly1305::aead::{Aead, KeyInit, OsRng};
-use chacha20poly1305::{AeadCore as _, ChaCha20Poly1305, Key, Nonce};
+use chacha20poly1305::aead::{Aead, Generate, KeyInit};
+use chacha20poly1305::{ChaCha20Poly1305, Key, Nonce};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -28,15 +28,15 @@ impl CryptoBox {
         if key_bytes.len() != 32 {
             return Err(CryptoError::InvalidKey);
         }
-        let key = Key::from_slice(key_bytes);
-        Ok(Self { key: *key })
+        let key = Key::try_from(key_bytes).map_err(|_| CryptoError::InvalidKey)?;
+        Ok(Self { key })
     }
 }
 
 impl Crypto for CryptoBox {
     fn encrypt_string(&self, plaintext: &str) -> Result<(Vec<u8>, Vec<u8>), CryptoError> {
         let cipher = ChaCha20Poly1305::new(&self.key);
-        let nonce = ChaCha20Poly1305::generate_nonce(&mut OsRng);
+        let nonce = Nonce::generate();
         let ct = cipher
             .encrypt(&nonce, plaintext.as_bytes())
             .map_err(|_| CryptoError::Encrypt)?;
@@ -48,9 +48,10 @@ impl Crypto for CryptoBox {
             return Err(CryptoError::InvalidNonceLen(nonce_bytes.len()));
         }
         let cipher = ChaCha20Poly1305::new(&self.key);
-        let nonce = Nonce::from_slice(nonce_bytes);
+        let nonce = Nonce::try_from(nonce_bytes)
+            .map_err(|_| CryptoError::InvalidNonceLen(nonce_bytes.len()))?;
         let pt = cipher
-            .decrypt(nonce, ciphertext)
+            .decrypt(&nonce, ciphertext)
             .map_err(|_| CryptoError::Decrypt)?;
         String::from_utf8(pt).map_err(|_| CryptoError::Decrypt)
     }
@@ -83,5 +84,39 @@ mod tests {
         let (ct, _nonce) = c.encrypt_string("x").expect("encrypt");
         let res = c.decrypt_string(&ct, &[0u8; 8]);
         assert!(matches!(res, Err(CryptoError::InvalidNonceLen(8))));
+    }
+    #[test]
+    fn ciphertext_is_compatible_in_both_directions() {
+        use chacha20poly1305_legacy::{
+            ChaCha20Poly1305 as LegacyCipher, Nonce as LegacyNonce,
+            aead::{Aead as _, KeyInit as _},
+        };
+        let key = [42u8; 32];
+        let old = LegacyCipher::new_from_slice(&key).unwrap();
+        let current = CryptoBox::new(&key).unwrap();
+        let nonce = [17u8; 12];
+        let plaintext = "existing-token-日本語";
+        let ciphertext = old
+            .encrypt(LegacyNonce::from_slice(&nonce), plaintext.as_bytes())
+            .unwrap();
+        assert_eq!(
+            current.decrypt_string(&ciphertext, &nonce).unwrap(),
+            plaintext
+        );
+        let (ciphertext, nonce) = current.encrypt_string(plaintext).unwrap();
+        assert_eq!(
+            old.decrypt(LegacyNonce::from_slice(&nonce), ciphertext.as_slice())
+                .unwrap(),
+            plaintext.as_bytes()
+        );
+        let mut corrupt = ciphertext.clone();
+        corrupt[0] ^= 1;
+        assert!(current.decrypt_string(&corrupt, &nonce).is_err());
+        assert!(
+            CryptoBox::new(&[43u8; 32])
+                .unwrap()
+                .decrypt_string(&ciphertext, &nonce)
+                .is_err()
+        );
     }
 }
