@@ -23,6 +23,9 @@ llvm = ndk / 'toolchains/llvm/prebuilt' / host / 'bin'
 tools = sdk / 'build-tools/35.0.0'
 android_jar = sdk / 'platforms/android-36/android.jar'
 output = ROOT / 'build'
+# Invalidate the previous signed result even if this build later fails.
+signed = output / 'probe.apk'
+signed.unlink(missing_ok=True)
 classes = output / 'classes'
 dex = output / 'dex'
 classes.mkdir(parents=True, exist_ok=True)
@@ -58,7 +61,6 @@ if args.sign:
         'security', 'find-generic-password', '-w', '-s',
         'net.withforesight.roomtemp.android_keypass', '-a', 'keystore_v1',
     ], capture_output=True, check=True).stdout.strip()
-    signed = output / 'probe.apk'
     signing = subprocess.run([
         str(tools / 'apksigner'), 'sign', '--ks',
         str(REPO / 'src-tauri/gen/android/app/build/signing/tmp-release.jks'),
