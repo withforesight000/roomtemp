@@ -14,7 +14,16 @@ RoomTemp is a cross-platform desktop and mobile application that visualizes ambi
 - **Frontend:** Next.js 16 (App Router), React 19, Tailwind CSS, shadcn/ui, Recharts.
 - **Bridge:** Tauri 2 with IPC commands exposed through `@tauri-apps/api`.
 - **Backend:** Rust 1.98.1 (edition 2024; the toolchain used in local checks), Diesel + SQLite, tonic gRPC client, ChaCha20-Poly1305 encryption.
-- **Proto definitions:** TypeScript bindings from `@withforesight/tempgrpcd-protos` on `withforesight000/protobuf-ts` (HTTPS) and Rust bindings from `tempgrpcd-protos` on `withforesight000/protobuf-rust` (HTTPS).
+- **Proto definitions:** TypeScript bindings from the versioned `tempgrpcd-protos-v0.1.0` GitHub Release tarball (HTTPS) and Rust bindings from `tempgrpcd-protos` on `withforesight000/protobuf-rust` (HTTPS).
+
+The TypeScript protobuf package is distributed at:
+
+- [tempgrpcd-protos v0.1.0](https://github.com/withforesight000/protobuf-ts/releases/tag/tempgrpcd-protos-v0.1.0)
+- Artifact: `tempgrpcd-protos-0.1.0.tgz`
+- SHA-256: `83362b5dc105f944f4c9a375129caf76b1741154c11f4cca6cb7576c10a6dacf`
+- Source commit: `42916f2ccc7babfe1799ae16ae2193c18bb206a1` (see the release's `provenance.json`).
+
+When updating this package, verify the artifact against `SHA256SUMS`, review its provenance and generated-code changes, update the exact release URL and lockfile, and run type checks, build, and the WebDriver suite. Release assets can be replaced; the checksum and lockfile integrity pin their contents.
 
 ## Requirements
 

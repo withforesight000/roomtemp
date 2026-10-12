@@ -212,8 +212,8 @@ importers:
         specifier: ^2.12.3
         version: 2.12.3
       '@withforesight/tempgrpcd-protos':
-        specifier: github:withforesight000/protobuf-ts#main&path:/packages/tempgrpcd-protos
-        version: https://codeload.github.com/withforesight000/protobuf-ts/tar.gz/8aed21276ff4b2718525d7145497cb1fc87372ca#path:/packages/tempgrpcd-protos
+        specifier: https://github.com/withforesight000/protobuf-ts/releases/download/tempgrpcd-protos-v0.1.0/tempgrpcd-protos-0.1.0.tgz
+        version: https://github.com/withforesight000/protobuf-ts/releases/download/tempgrpcd-protos-v0.1.0/tempgrpcd-protos-0.1.0.tgz
       bincode-ts:
         specifier: 1.0.0
         version: 1.0.0
@@ -223,9 +223,6 @@ importers:
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
-      core:
-        specifier: link:@tauri-apps/api/core
-        version: link:@tauri-apps/api/core
       date-fns:
         specifier: ^4.4.0
         version: 4.4.0
@@ -1814,8 +1811,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@withforesight/tempgrpcd-protos@https://codeload.github.com/withforesight000/protobuf-ts/tar.gz/8aed21276ff4b2718525d7145497cb1fc87372ca#path:/packages/tempgrpcd-protos':
-    resolution: {gitHosted: true, path: /packages/tempgrpcd-protos, tarball: https://codeload.github.com/withforesight000/protobuf-ts/tar.gz/8aed21276ff4b2718525d7145497cb1fc87372ca}
+  '@withforesight/tempgrpcd-protos@https://github.com/withforesight000/protobuf-ts/releases/download/tempgrpcd-protos-v0.1.0/tempgrpcd-protos-0.1.0.tgz':
+    resolution: {integrity: sha512-srdcBvx5Cwq0KG4QgoELnXgCVLBy1VQbkZeWiTEAeBn+yMi1kDaI+COd0ng1qxmBriA7JSa7UvhwYkIFxK3++g==, tarball: https://github.com/withforesight000/protobuf-ts/releases/download/tempgrpcd-protos-v0.1.0/tempgrpcd-protos-0.1.0.tgz}
     version: 0.1.0
 
   acorn-jsx@5.3.2:
@@ -4782,7 +4779,7 @@ snapshots:
   '@unrs/resolver-binding-win32-x64-msvc@1.12.2':
     optional: true
 
-  '@withforesight/tempgrpcd-protos@https://codeload.github.com/withforesight000/protobuf-ts/tar.gz/8aed21276ff4b2718525d7145497cb1fc87372ca#path:/packages/tempgrpcd-protos':
+  '@withforesight/tempgrpcd-protos@https://github.com/withforesight000/protobuf-ts/releases/download/tempgrpcd-protos-v0.1.0/tempgrpcd-protos-0.1.0.tgz':
     dependencies:
       '@protobuf-ts/runtime': 2.11.1
       '@protobuf-ts/runtime-rpc': 2.11.1
