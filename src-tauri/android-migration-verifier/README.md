@@ -29,7 +29,9 @@ rustup target add aarch64-linux-android
 python3 src-tauri/android-migration-verifier/build.py
 ```
 
-The default output is an unsigned aligned APK. `ANDROID_HOME`,
+The default output is `build/aligned.apk`, an unsigned aligned APK for build
+validation only. It cannot be installed for instrumentation against the existing
+release application. `ANDROID_HOME`,
 `ANDROID_NDK_HOME`, `JAVA_HOME`, and `CARGO_TARGET_DIR` can override the paths.
 Build outputs are ignored by Git.
 
@@ -46,6 +48,10 @@ python3 src-tauri/android-migration-verifier/build.py \
 ```
 
 ## Run
+
+First complete the **signed build** (`--sign --installed-apk ...`) above. It
+produces `build/probe.apk` after verifying that its certificate matches the
+installed RoomTemp release. The unsigned build does not produce this file.
 
 Select the intended device with `adb -s SERIAL` if multiple devices are connected.
 The commands below install **only the verifier package**. Do not uninstall or
