@@ -13,7 +13,7 @@ RoomTemp is a cross-platform desktop and mobile application that visualizes ambi
 
 - **Frontend:** Next.js 16 (App Router), React 19, Tailwind CSS, shadcn/ui, Recharts.
 - **Bridge:** Tauri 2 with IPC commands exposed through `@tauri-apps/api`.
-- **Backend:** Rust 1.98.1 (edition 2024; the toolchain used in local checks), Diesel + SQLite, tonic gRPC client, ChaCha20-Poly1305 encryption.
+- **Backend:** Rust 1.98.1 (edition 2024; pinned via mise), Diesel + SQLite, tonic gRPC client, ChaCha20-Poly1305 encryption.
 - **Proto definitions:** TypeScript bindings from the versioned `tempgrpcd-protos-v0.1.0` GitHub Release tarball (HTTPS) and Rust bindings from `tempgrpcd-protos` on `withforesight000/protobuf-rust` (HTTPS).
 
 The TypeScript protobuf package is distributed at:
@@ -27,31 +27,37 @@ When updating this package, verify the artifact against `SHA256SUMS`, review its
 
 ## Requirements
 
-- Bun 1.4.3 (pinned in `.bun-version` and `package.json`; Node.js/npm/pnpm are not required for application tooling).
-- Rust toolchain (`rustup`) and the platform prerequisites listed in the [Tauri 2 documentation](https://v2.tauri.app/start/).
+- [mise](https://mise.jdx.dev/getting-started.html) for installing and selecting Bun 1.4.3 and Rust 1.98.1 from the tracked `mise.toml`. Node.js/npm/pnpm are not required for application tooling.
+- The platform prerequisites listed in the [Tauri 2 documentation](https://v2.tauri.app/start/).
 - HTTPS access to GitHub Releases for the TypeScript proto package and Git access to `withforesight000/protobuf-rust` for the Rust proto package.
 - A reachable `tempgrpcd` gRPC server that supports TLS and bearer-token authentication.
 
-Install the pinned Bun version through your version manager, or use the official installer:
+Install mise, then set up the project tools:
 
 ```bash
-curl -fsSL https://bun.com/install | bash -s "bun-v$(cat .bun-version)"
-bun --version
+mise trust
+mise install
+mise exec -- bun --version
+mise exec -- rustc --version
 ```
 
 `bunfig.toml` forces Bun for Node-shebang tools, uses isolated dependency linking, and applies a 24-hour minimum release age to new registry resolutions. Only `protobufjs`, `sharp`, and `unrs-resolver` install scripts are trusted. Commit `bun.lock` alongside dependency changes; retain both TypeScript aliases and review peer resolutions when updating. The protobuf generator's `@typescript/vfs` retains its TypeScript 5.4.5 peer through `@bufbuild/protoplugin`, while Next.js/ESLint use the TypeScript 6 alias.
 
-Local untracked version-manager configuration may override the documented tools; configure Bun 1.4.3 locally without relying on Node or pnpm. GitHub JavaScript actions use the runner's own Node runtime, independently of application tooling.
+Run project tasks with `mise run`, or use `mise exec -- <command>` without shell activation. To run the existing Bun/Cargo commands directly, [activate mise in your shell](https://mise.jdx.dev/cli/activate.html). Machine-specific overrides belong in ignored `mise.local.toml`; do not add Node or pnpm to the project toolchain. GitHub JavaScript actions use the runner's own Node runtime, independently of application tooling.
+
+CI installs tools from `mise.toml` using `jdx/mise-action`. Keep its Bun pin synchronized with `.bun-version`, `package.json` and the Docker image default; keep the Rust pin synchronized with the Docker rustup installer. Rust uses rustup internally, including the `llvm-tools` component needed for coverage. Android SDK/NDK and JDK remain platform prerequisites; configure them as described by Tauri before using the Android tasks.
 
 ## Quick Start
 
 ```bash
 # install dependencies
-bun install --frozen-lockfile
+mise run install
 
 # run the Next.js dev server and Tauri shell together
-bun --bun run tauri dev
+mise run dev
 ```
+
+Other tasks: `mise run lint`, `mise run build`, `mise run test:rust`, `mise run test:e2e`, and `mise run tauri:build`. For Android arm64, run `mise run android:setup` once, then `mise run android:build`. List available tasks with `mise tasks`.
 
 ## Testing
 

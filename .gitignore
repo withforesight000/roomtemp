@@ -22,6 +22,10 @@
 
 # misc
 .DS_Store
+mise.local.toml
+mise.*.local.toml
+.mise.local.toml
+.mise.*.local.toml
 *.pem
 
 # debug

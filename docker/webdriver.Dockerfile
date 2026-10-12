@@ -56,11 +56,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY --from=bun-runtime /usr/local/bin/bun /usr/local/bin/bun
 RUN bun --version
 
-RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
+RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain 1.98.1
 
 ENV PATH="/root/.cargo/bin:${PATH}"
 
-RUN rustup default stable
+RUN rustup component add llvm-tools --toolchain 1.98.1
 RUN curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
 
 RUN cargo binstall cargo-chef --locked
