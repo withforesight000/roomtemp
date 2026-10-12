@@ -75,10 +75,10 @@ jobs:
           bun --bun run typecheck
           bun --bun run typecheck:compat
 
-      - name: Run ESLint
+      - name: Run Biome
         run: |
           export PATH="$ROOMTEMP_TOOL_PATH"
-          bun --bun run lint:eslint
+          bun --bun run lint:biome
 
       - uses: cargo-bins/cargo-binstall@main
 

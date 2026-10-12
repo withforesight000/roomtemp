@@ -7,7 +7,7 @@ description = "Install JavaScript dependencies from bun.lock"
 run = "bun install --frozen-lockfile"
 
 [tasks.lint]
-description = "Run both TypeScript checks and ESLint"
+description = "Run both TypeScript checks and Biome"
 run = "bun --bun run lint"
 
 [tasks.build]
