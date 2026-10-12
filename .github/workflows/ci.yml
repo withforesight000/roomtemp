@@ -96,6 +96,9 @@ jobs:
           CI: true
           NEXT_TELEMETRY_DISABLED: 1
         run: |
+          # The native driver is installed after the application tool directory is prepared.
+          native_driver="$(command -v WebKitWebDriver)"
+          ln -s "$native_driver" "${ROOMTEMP_TOOL_PATH%%:*}/WebKitWebDriver"
           export PATH="$ROOMTEMP_TOOL_PATH"
           xvfb-run -a bun --bun run test:e2e
   rust-tests:
