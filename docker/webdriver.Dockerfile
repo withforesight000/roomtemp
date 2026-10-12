@@ -1,3 +1,6 @@
+ARG BUN_VERSION=1.4.3
+FROM oven/bun:${BUN_VERSION} AS bun-runtime
+
 FROM ubuntu:24.04 AS base
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -50,24 +53,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   python3 \
   && rm -rf /var/lib/apt/lists/*
 
-# Use the same exact version as local tooling and CI, on either supported CPU.
-COPY .node-version /tmp/roomtemp-node-version
-RUN set -eux; \
-  NODE_VERSION="$(cat /tmp/roomtemp-node-version)"; \
-  case "$(dpkg --print-architecture)" in \
-    amd64) NODE_ARCH=x64 ;; \
-    arm64) NODE_ARCH=arm64 ;; \
-    *) exit 1 ;; \
-  esac; \
-  NODE_ARCHIVE="node-v${NODE_VERSION}-linux-${NODE_ARCH}.tar.xz"; \
-  curl -fsSLO "https://nodejs.org/dist/v${NODE_VERSION}/${NODE_ARCHIVE}"; \
-  curl -fsSLO "https://nodejs.org/dist/v${NODE_VERSION}/SHASUMS256.txt"; \
-  awk -v archive="${NODE_ARCHIVE}" '$2 == archive' SHASUMS256.txt | sha256sum -c -; \
-  tar -xJf "${NODE_ARCHIVE}" -C /usr/local --strip-components=1; \
-  test "$(node --version)" = "v${NODE_VERSION}"; \
-  rm "${NODE_ARCHIVE}" SHASUMS256.txt /tmp/roomtemp-node-version
+COPY --from=bun-runtime /usr/local/bin/bun /usr/local/bin/bun
+RUN bun --version
 
-RUN npm install -g pnpm@12.11.2
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
 
 ENV PATH="/root/.cargo/bin:${PATH}"
