@@ -10,7 +10,7 @@ export type SessionSnapshot = {
 export type SaveToken = { id: number; lifecycle: number };
 export type ConnectionSession = ReturnType<typeof useGrpcConnect>;
 
-export function useGrpcConnect(operations: FrontendOperations) {
+export function useGrpcConnect(operations: Pick<FrontendOperations, "connect">) {
   const [state, dispatch] = useReducer(connectionReducer, initialConnectionState);
   // This admission guard contains only operational identity/availability, never UI data or messages.
   const gate = useRef<SessionSnapshot>({ generation: 0, graphEpoch: 0, lifecycle: 0, ready: false, saving: false, active: true });

@@ -1,59 +1,43 @@
-import { useCallback, useReducer } from "react";
+import { useCallback, useEffect, useReducer, useRef } from "react";
+import type { Settings } from "@/domain/types";
 import type { FrontendOperations } from "@/usecases/frontendOperations";
 import { presentSettingsError } from "@/interfaces/presenters/errorPresenter";
-import { Settings } from "@/domain/types";
+import { initialSettingsState, settingsReducer, type SettingsFieldChange } from "../state/settings";
+import type { SaveSettingsResult } from "./useSettingsWorkflow";
 
-type State = Settings & { error?: string };
-
-function reducer(
-  state: State,
-  action: { type: string; payload: Partial<State> }
-): State {
-  switch (action.type) {
-    case "LOAD":
-      return { ...state, ...action.payload, error: undefined };
-    case "SET_FIELD":
-      return { ...state, ...action.payload };
-    case "SET_ERROR":
-      return { ...state, error: action.payload.error };
-    default:
-      return state;
-  }
-}
-
-export function useSettings(operations: FrontendOperations) {
-  const [state, dispatch] = useReducer(reducer, {
-    url: "",
-    accessToken: "",
-    useProxies: false,
-    proxyUrl: "",
-    error: undefined,
-  } as State);
-
+export function useSettings(operations: Pick<FrontendOperations, "loadSettings">,
+  saveSettings: (values: Settings) => Promise<SaveSettingsResult>) {
+  const [state, dispatch] = useReducer(settingsReducer, initialSettingsState);
+  const mounted = useRef(true);
+  const loadId = useRef(0);
+  const saveId = useRef(0);
+  const saveResultId = useRef(0);
+  const setField = useCallback((change: SettingsFieldChange) => {
+    dispatch({ type: "fieldChanged", ...change });
+  }, []);
   const load = useCallback(async () => {
+    const id = ++loadId.current;
     try {
-      const settings = await operations.loadSettings();
-      dispatch({ type: "LOAD", payload: settings });
-    } catch (error: unknown) {
-      dispatch({ type: "SET_ERROR", payload: { error: presentSettingsError(error) } });
+      const values = await operations.loadSettings();
+      if (mounted.current && id === loadId.current) dispatch({ type: "loaded", values });
+    } catch (error) {
+      if (mounted.current && id === loadId.current) dispatch({ type: "error", message: presentSettingsError(error) });
     }
   }, [operations]);
-
   const save = useCallback(async () => {
-    try {
-      await operations.saveSettings({
-        url: state.url,
-        accessToken: state.accessToken,
-        useProxies: state.useProxies,
-        proxyUrl: state.proxyUrl,
-      });
-      dispatch({ type: "SET_ERROR", payload: { error: undefined } });
-      return true;
-    } catch (error: unknown) {
-      dispatch({ type: "SET_ERROR", payload: { error: presentSettingsError(error) } });
+    const id = ++saveId.current;
+    loadId.current++; // Loading an older persisted snapshot must not replace a submitted form.
+    const result = await saveSettings({ ...state.values });
+    if (mounted.current && id > saveResultId.current && result.status !== "ignored") {
+      saveResultId.current = id;
+      dispatch({ type: "error", message: result.status === "failed" ? presentSettingsError(result.error) : undefined });
     }
-    return false;
-  }, [operations, state.accessToken, state.proxyUrl, state.url, state.useProxies]);
-
-  return { state, dispatch, load, save };
+    return result.status === "saved";
+  }, [saveSettings, state.values]);
+  useEffect(() => {
+    mounted.current = true;
+    void load();
+    return () => { mounted.current = false; loadId.current++; saveResultId.current = ++saveId.current; };
+  }, [load]);
+  return { state, setField, save };
 }

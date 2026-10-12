@@ -6,7 +6,7 @@ import { presentOperationError } from "@/interfaces/presenters/errorPresenter";
 import { graphReducer, initialGraphState } from "../state/graph";
 import type { ConnectionSession } from "./useGrpcConnect";
 
-export function useGraphData(operations: FrontendOperations, connection: ConnectionSession) {
+export function useGraphData(operations: Pick<FrontendOperations, "fetchGraphData">, connection: Pick<ConnectionSession, "state" | "snapshot" | "connectionFailed">) {
   const [state, dispatch] = useReducer(graphReducer, initialGraphState);
   const request = useRef(0);
   const busy = useRef<number | null>(null);

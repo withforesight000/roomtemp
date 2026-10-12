@@ -18,6 +18,10 @@ run = "bun --bun run build"
 description = "Start the Next.js dev server and Tauri application"
 run = "bun --bun run tauri dev"
 
+[tasks."test:frontend"]
+description = "Run frontend unit and React Hook tests"
+run = "bun --bun run test:frontend"
+
 [tasks."test:rust"]
 description = "Run the Rust workspace tests"
 run = "cargo test --manifest-path src-tauri/Cargo.toml --locked --workspace --all-features"

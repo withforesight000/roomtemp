@@ -307,8 +307,8 @@ describe("Verified connectivity", function () {
     await driver.wait(async () => (await driver.findElement(By.css("body")).getText()).includes("Temperature (℃)"), DRIVER_WAIT);
   });
 
-  it("invalidates connectivity after a graph authentication or timeout failure", async () => {
-    for (const [code, message] of [["authentication_failed", "Authentication failed"], ["timeout", "timed out"]]) {
+  it("invalidates connectivity after a graph authentication, availability or timeout failure", async () => {
+    for (const [code, message] of [["authentication_failed", "Authentication failed"], ["unavailable", "unavailable"], ["timeout", "timed out"]]) {
       await home();
       await waitReady();
       await setMock("graph", "error", code);
@@ -320,6 +320,20 @@ describe("Verified connectivity", function () {
       await retry();
       await waitReady();
     }
+  });
+
+  it("quietly cancels superseded fetches without leaving the button busy", async () => {
+    await home();
+    await waitReady();
+    await setMock("graph", "error", "superseded");
+    await (await fetchButton()).click();
+    await driver.wait(async () => (await fetchButton()).isEnabled(), DRIVER_WAIT);
+    expect(await driver.findElements(By.css('[role="alert"]'))).to.have.length(0);
+    expect((await driver.findElement(By.css("body")).getText())).not.to.include("No data for the selected period");
+    await waitStatus("Mock connected to gRPC server");
+    await setMock("graph", "error", null);
+    await (await fetchButton()).click();
+    await driver.wait(async () => (await driver.findElement(By.css("body")).getText()).includes("Temperature (℃)"), DRIVER_WAIT);
   });
 
   it("ignores a late failed connection after a newer successful settings update", async () => {

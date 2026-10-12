@@ -83,7 +83,9 @@ jobs:
           bun --bun run lint:biome
 
       - name: Run frontend unit and Hook tests
-        run: bun --bun run test:frontend
+        run: |
+          export PATH="$ROOMTEMP_TOOL_PATH"
+          bun --bun run test:frontend
 
       - uses: cargo-bins/cargo-binstall@main
 
