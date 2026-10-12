@@ -11,8 +11,8 @@ use std::sync::Arc;
 use app_state::AppState;
 use infrastructure::db::{establish_connection_pool, run_migrations};
 use presentation::commands::{connect_to_grpc_server, get_graph_data, get_settings, set_settings};
+use std::sync::Mutex;
 use tauri::Manager as _;
-use tokio::sync::Mutex;
 
 use crate::infrastructure::keystore;
 
@@ -31,7 +31,7 @@ pub fn run() {
             // アプリ全体で共有する状態として登録
             let state = AppState {
                 pool,
-                grpc_connection: Arc::new(Mutex::new(None)),
+                grpc_connection: Arc::new(Mutex::new(Default::default())),
             };
             app.manage(state);
 

@@ -131,8 +131,6 @@ impl SettingsRepository for DieselSettingsRepository {
 
         let (ciphertext, nonce) = crypt.encrypt_string(&setting.access_token)?;
 
-        // 既存レコードの削除（簡易アップサート）
-        diesel::delete(settings.filter(id.eq(1))).execute(&mut self.conn)?;
         let new_setting = NewSetting {
             id: 1,
             url: &setting.url,
@@ -141,9 +139,15 @@ impl SettingsRepository for DieselSettingsRepository {
             use_proxies: setting.use_proxies,
             proxy_url: &setting.proxy_url,
         };
-        diesel::insert_into(settings)
-            .values(&new_setting)
-            .execute(&mut self.conn)?;
+        // Keep the previous settings when insertion fails after deletion.
+        self.conn
+            .transaction::<(), diesel::result::Error, _>(|conn| {
+                diesel::delete(settings.filter(id.eq(1))).execute(conn)?;
+                diesel::insert_into(settings)
+                    .values(&new_setting)
+                    .execute(conn)?;
+                Ok(())
+            })?;
         Ok(())
     }
 }

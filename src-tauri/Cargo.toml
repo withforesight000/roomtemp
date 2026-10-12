@@ -39,6 +39,7 @@ tempgrpcd-protos = { git = "https://github.com/withforesight000/protobuf-rust.gi
 tokio = { version = "1", features = ["full"] }
 tonic = { version = "0.14", features = ["tls-webpki-roots"] }
 tonic-prost = "0.14"
+tonic-health = "0.14"
 tonic-reflection = "0.14"
 once_cell = "1"
 keyring-core = "1"
