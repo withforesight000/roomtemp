@@ -83,6 +83,7 @@ impl From<keyring_core::Error> for KeystoreError {
 trait CredentialAccess {
     fn read(&self) -> Result<String, KeystoreError>;
     fn write(&self, password: &str) -> Result<(), KeystoreError>;
+    fn delete(&self) -> Result<(), KeystoreError>;
 }
 
 impl CredentialAccess for keyring_core::Entry {
@@ -91,6 +92,9 @@ impl CredentialAccess for keyring_core::Entry {
     }
     fn write(&self, password: &str) -> Result<(), KeystoreError> {
         self.set_password(password).map_err(Into::into)
+    }
+    fn delete(&self) -> Result<(), KeystoreError> {
+        self.delete_credential().map_err(Into::into)
     }
 }
 
@@ -127,8 +131,18 @@ fn resolve_key(
         None => return Err(KeystoreError::NoEntry),
     };
     current.write(&STANDARD.encode(key))?;
-    if decode_key(&current.read()?)? != key {
-        return Err(KeystoreError::Other);
+    let verified = current.read().and_then(|password| decode_key(&password));
+    match verified {
+        Ok(stored) if stored == key => {}
+        result => {
+            // This entry was absent under KEY_LOCK. Remove an unverified write
+            // so the next access can retry migration from the retained legacy key.
+            match current.delete() {
+                Ok(()) | Err(KeystoreError::NoEntry) => {}
+                Err(error) => return Err(error),
+            }
+            return Err(result.err().unwrap_or(KeystoreError::Other));
+        }
     }
     // Keep the legacy credential so an existing installation can roll back.
     Ok(key)
@@ -213,6 +227,7 @@ mod tests {
         fail_read: bool,
         fail_write: bool,
         corrupt_write: bool,
+        fail_delete: bool,
     }
     impl MemoryEntry {
         fn with(key: [u8; 32]) -> Self {
@@ -244,6 +259,15 @@ mod tests {
             } else {
                 password.to_owned()
             });
+            Ok(())
+        }
+        fn delete(&self) -> Result<(), KeystoreError> {
+            if self.fail_delete {
+                return Err(KeystoreError::NoStorageAccess(Box::new(
+                    std::io::Error::other("delete failed"),
+                )));
+            }
+            *self.password.lock().unwrap() = None;
             Ok(())
         }
     }
@@ -319,7 +343,7 @@ mod tests {
     #[test]
     fn migration_write_failures_and_readback_mismatch_preserve_legacy() {
         let old = MemoryEntry::with([42; 32]);
-        for current in [
+        for mut current in [
             MemoryEntry {
                 fail_write: true,
                 ..MemoryEntry::default()
@@ -331,8 +355,25 @@ mod tests {
         ] {
             assert!(resolve_key(&current, Some(&old), false).is_err());
             assert_eq!(decode_key(&old.read().unwrap()).unwrap(), [42; 32]);
+            assert!(matches!(current.read(), Err(KeystoreError::NoEntry)));
+            current.fail_write = false;
+            current.corrupt_write = false;
+            assert_eq!(resolve_key(&current, Some(&old), false).unwrap(), [42; 32]);
         }
     }
+    #[test]
+    fn failed_verification_reports_cleanup_failure() {
+        let current = MemoryEntry {
+            corrupt_write: true,
+            fail_delete: true,
+            ..MemoryEntry::default()
+        };
+        assert!(matches!(
+            resolve_key(&current, Some(&MemoryEntry::with([42; 32])), false),
+            Err(KeystoreError::NoStorageAccess(_))
+        ));
+    }
+
     #[test]
     fn serialized_concurrent_first_access_returns_one_key() {
         let current = Arc::new(MemoryEntry::default());
