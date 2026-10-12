@@ -292,6 +292,21 @@ describe("Verified connectivity", function () {
     expect(await (await fetchButton()).isEnabled()).to.be.true;
   });
 
+  it("shows malformed responses as fetch errors and keeps the verified connection", async () => {
+    await home();
+    await waitReady();
+    await setMock("graph", "malformed", "1");
+    await (await fetchButton()).click();
+    await driver.wait(until.elementLocated(By.css('[role="alert"]')), DRIVER_WAIT);
+    expect(await driver.findElement(By.css('[role="alert"]')).getText()).to.include("graph request failed");
+    expect(await (await fetchButton()).isEnabled()).to.be.true;
+    expect((await driver.findElement(By.css("body")).getText())).not.to.include("No data for the selected period");
+    await waitStatus("Mock connected to gRPC server");
+    await setMock("graph", "malformed", null);
+    await (await fetchButton()).click();
+    await driver.wait(async () => (await driver.findElement(By.css("body")).getText()).includes("Temperature (℃)"), DRIVER_WAIT);
+  });
+
   it("invalidates connectivity after a graph authentication or timeout failure", async () => {
     for (const [code, message] of [["authentication_failed", "Authentication failed"], ["timeout", "timed out"]]) {
       await home();

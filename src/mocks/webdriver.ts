@@ -36,6 +36,10 @@ export function getMockGraphData(): GraphData {
 }
 
 export async function getMockGraphBuffer(empty = false): Promise<ArrayBuffer> {
+  if (WEBDRIVER_MOCK_FLAG && typeof window !== "undefined" &&
+      window.sessionStorage.getItem("roomtemp.mock.grpc.graph.malformed") === "1") {
+    return new Uint8Array([255]).buffer;
+  }
   const { GetAmbientConditionsResponse } = await import("@withforesight/tempgrpcd-protos");
   const bytes = GetAmbientConditionsResponse.toBinary({ ambientConditions: empty ? {} : ambientPayload });
   return Uint8Array.from(bytes).buffer;
