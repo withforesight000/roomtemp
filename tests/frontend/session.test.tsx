@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
-import { act, renderHook } from "@testing-library/react";
-import { useGrpcConnect } from "@/interfaces/react/hooks/useGrpcConnect";
+import { act, render, renderHook } from "@testing-library/react";
+import { useGrpcConnect, type ConnectionSession } from "@/interfaces/react/hooks/useGrpcConnect";
 import { useGraphData } from "@/interfaces/react/hooks/useGraphData";
 import { connectionReducer, initialConnectionState } from "@/interfaces/react/state/connection";
 import { graphReducer, initialGraphState } from "@/interfaces/react/state/graph";
@@ -126,4 +126,43 @@ test("an old graph cannot replace a newer result after reconnect", async () => {
   await act(async () => { old.resolve(data); await pending; });
   expect(result.current.graph.data).toEqual([]);
   expect(result.current.graph.hasFetched).toBe(true);
+});
+
+for (const code of ["authentication_failed", "unavailable", "timeout", "request_failed"] as const) {
+  test(`graph teardown forwards ${code} only when it invalidates the connection`, async () => {
+    const response = deferred<GraphData>();
+    const api = operations({ fetchGraphData: () => response.promise });
+    let connection!: ConnectionSession;
+    let graph!: ReturnType<typeof useGraphData>;
+    function Graph({ session }: { session: ConnectionSession }) {
+      graph = useGraphData(api, session);
+      return null;
+    }
+    function Session({ showGraph }: { showGraph: boolean }) {
+      connection = useGrpcConnect(api);
+      return showGraph ? <Graph session={connection} /> : null;
+    }
+    const view = render(<Session showGraph />);
+    await flush();
+    let pending!: Promise<void>;
+    act(() => { pending = graph.fetch(...dates); });
+    view.rerender(<Session showGraph={false} />);
+    await act(async () => { response.reject(new OperationFailure(code)); await pending; });
+    expect(connection.state.phase).toBe(code === "request_failed" ? "ready" : "error");
+    expect(connection.snapshot().ready).toBe(code === "request_failed");
+  });
+}
+test("an obsolete graph failure cannot invalidate a newer connection", async () => {
+  const response = deferred<GraphData>();
+  const api = operations({ fetchGraphData: () => response.promise });
+  const { result } = renderHook(() => {
+    const connection = useGrpcConnect(api);
+    return { connection, graph: useGraphData(api, connection) };
+  });
+  await flush();
+  let pending!: Promise<void>;
+  act(() => { pending = result.current.graph.fetch(...dates); });
+  await act(async () => { await result.current.connection.connect(); });
+  await act(async () => { response.reject(new OperationFailure("authentication_failed")); await pending; });
+  expect(result.current.connection.state.phase).toBe("ready");
 });

@@ -37,10 +37,14 @@ export function useGraphData(operations: Pick<FrontendOperations, "fetchGraphDat
       if (!active()) return;
       dispatch({ type: "succeeded", ...identity, data: presentGraphData(response) });
     } catch (error) {
-      if (!active()) return;
       const failure = operationFailure(error);
+      // Backend invalidation outlives this graph view; the session checks its generation.
+      if (invalidatesConnection(failure)) {
+        connectionFailed(failure, generation);
+        return;
+      }
+      if (!active()) return;
       if (failure.code === "superseded") dispatch({ type: "cancelled", ...identity });
-      else if (invalidatesConnection(failure)) connectionFailed(failure, generation);
       else dispatch({ type: "failed", ...identity, error: failure.code });
     } finally {
       if (busy.current === id) busy.current = null;
