@@ -4,38 +4,56 @@ import { type OperationFailure, operationFailure } from "@/usecases/operationErr
 import { connectionReducer, initialConnectionState } from "../state/connection";
 
 export type SessionSnapshot = {
-  generation: number; graphEpoch: number; lifecycle: number;
-  ready: boolean; saving: boolean; active: boolean;
+  generation: number;
+  graphEpoch: number;
+  lifecycle: number;
+  ready: boolean;
+  saving: boolean;
+  active: boolean;
 };
 export type SaveToken = { id: number; lifecycle: number };
 export type ConnectionSession = ReturnType<typeof useGrpcConnect>;
 
 export function useGrpcConnect(operations: Pick<FrontendOperations, "connect">) {
   const [state, dispatch] = useReducer(connectionReducer, initialConnectionState);
-  // This admission guard contains only operational identity/availability, never UI data or messages.
-  const gate = useRef<SessionSnapshot>({ generation: 0, graphEpoch: 0, lifecycle: 0, ready: false, saving: false, active: true });
+  // This gate updates synchronously; reducer state drives rendering.
+  const gate = useRef<SessionSnapshot>({
+    generation: 0,
+    graphEpoch: 0,
+    lifecycle: 0,
+    ready: false,
+    saving: false,
+    active: true,
+  });
   const saveId = useRef(0);
   const snapshot = useCallback((): SessionSnapshot => ({ ...gate.current }), []);
+
   const connect = useCallback(async (): Promise<boolean> => {
     const session = gate.current;
     if (!session.active || session.saving) return false;
+
     const generation = ++session.generation;
     const lifecycle = session.lifecycle;
     session.ready = false;
     session.graphEpoch++;
     dispatch({ type: "checking", generation, graphEpoch: session.graphEpoch });
-    const current = () => session.active && session.lifecycle === lifecycle && session.generation === generation;
+    const isCurrentConnection = () => session.active &&
+      session.lifecycle === lifecycle && session.generation === generation;
+
     try {
       await operations.connect();
-      if (!current()) return false;
+      if (!isCurrentConnection()) return false;
       session.ready = true;
       dispatch({ type: "ready", generation });
       return true;
     } catch (error) {
-      if (!current()) return false;
+      if (!isCurrentConnection()) return false;
       const failure = operationFailure(error);
-      dispatch(failure.code === "superseded" ? { type: "cancelled", generation }
-        : { type: "failed", generation, error: failure.code });
+      if (failure.code === "superseded") {
+        dispatch({ type: "cancelled", generation });
+      } else {
+        dispatch({ type: "failed", generation, error: failure.code });
+      }
       return false;
     }
   }, [operations]);
@@ -43,35 +61,56 @@ export function useGrpcConnect(operations: Pick<FrontendOperations, "connect">) 
   const beginSave = useCallback((): SaveToken | null => {
     const session = gate.current;
     if (!session.active || session.saving) return null;
+
     session.saving = true;
+    // Even a failed save discards graphs fetched before submission.
     session.graphEpoch++;
     dispatch({ type: "saveStarted", graphEpoch: session.graphEpoch });
     return { id: ++saveId.current, lifecycle: session.lifecycle };
   }, []);
+
   const finishSave = useCallback((saved: boolean, token: SaveToken): boolean => {
     const session = gate.current;
-    if (!session.active || session.lifecycle !== token.lifecycle || token.id !== saveId.current) return false;
+    if (!session.active || session.lifecycle !== token.lifecycle || token.id !== saveId.current) {
+      return false;
+    }
+
     session.saving = false;
-    if (saved) { session.generation++; session.graphEpoch++; session.ready = false; }
-    dispatch({ type: "saveFinished", saved, generation: session.generation, graphEpoch: session.graphEpoch });
+    if (saved) {
+      session.generation++;
+      session.graphEpoch++;
+      session.ready = false;
+    }
+    dispatch({
+      type: "saveFinished", saved,
+      generation: session.generation, graphEpoch: session.graphEpoch,
+    });
     return true;
   }, []);
+
   const connectionFailed = useCallback((error: OperationFailure, generation: number) => {
     const session = gate.current;
     if (!session.active || session.generation !== generation) return;
+
     session.ready = false;
     session.generation++;
     session.graphEpoch++;
-    dispatch({ type: "invalidated", generation: session.generation, graphEpoch: session.graphEpoch, error: error.code });
+    dispatch({
+      type: "invalidated", error: error.code,
+      generation: session.generation, graphEpoch: session.graphEpoch,
+    });
   }, []);
+
   useEffect(() => {
     gate.current.active = true;
     void connect();
     return () => {
       gate.current.active = false;
+      // Distinguish effect lifetimes, including Strict Mode's repeated setup.
       gate.current.lifecycle++;
       gate.current.graphEpoch++;
     };
   }, [connect]);
+
   return { state, snapshot, connect, beginSave, finishSave, connectionFailed };
 }

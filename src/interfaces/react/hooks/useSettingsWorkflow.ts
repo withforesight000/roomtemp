@@ -9,11 +9,15 @@ export type SaveSettingsResult =
   | { status: "ignored" };
 
 /** Provider lifetime: persisting settings must outlive the form that submitted them. */
-export function useSettingsWorkflow(operations: Pick<FrontendOperations, "saveSettings">, connection: ConnectionSession) {
+export function useSettingsWorkflow(
+  operations: Pick<FrontendOperations, "saveSettings">,
+  connection: ConnectionSession,
+) {
   const { beginSave, finishSave, connect } = connection;
   return useCallback(async (values: Settings): Promise<SaveSettingsResult> => {
     const token = beginSave();
     if (!token) return { status: "ignored" };
+
     const settings = { ...values };
     try {
       await operations.saveSettings(settings);
@@ -23,6 +27,7 @@ export function useSettingsWorkflow(operations: Pick<FrontendOperations, "saveSe
     }
     // A page unmount does not cancel this step; provider teardown prevents callbacks instead.
     const active = finishSave(true, token);
-    return { status: "saved", connected: active ? await connect() : false };
+    const connected = active ? await connect() : false;
+    return { status: "saved", connected };
   }, [operations, beginSave, finishSave, connect]);
 }
