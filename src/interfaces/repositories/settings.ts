@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { Settings } from "@/domain/types";
 import {
   getMockSettings,
+  waitMockSettingsSave,
   failMockSettingsOperation,
   isWebDriverMockEnabled,
 } from "@/mocks/webdriver";
@@ -21,6 +22,7 @@ export class SettingsRepositoryImpl implements SettingsRepository {
 
   async save(settings: Settings): Promise<void> {
     if (isWebDriverMockEnabled()) {
+      await waitMockSettingsSave();
       failMockSettingsOperation("save");
       return;
     }

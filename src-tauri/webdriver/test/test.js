@@ -163,6 +163,11 @@ describe("Dashboard workflow", function () {
       until.elementLocated(By.xpath('//button[normalize-space()="Fetch Data"]')),
       DRIVER_WAIT
     );
+    await driver.wait(async () => {
+      const button = await driver.findElement(By.xpath('//button[normalize-space()="Fetch Data"]'));
+      return button.isEnabled();
+    }, DRIVER_WAIT);
+
     await driver.executeScript(`
       const iterator = document.evaluate(
         '//button[normalize-space()="Fetch Data"]',
@@ -194,6 +199,167 @@ describe("Dashboard workflow", function () {
       );
       expect(found).to.be.true;
     }
+  });
+});
+
+
+describe("Verified connectivity", function () {
+  this.timeout(DRIVER_WAIT * 3);
+
+  async function setMock(operation, field, value) {
+    await driver.executeScript(
+      "if (arguments[1] === null) sessionStorage.removeItem(arguments[0]); else sessionStorage.setItem(arguments[0], arguments[1]);",
+      `roomtemp.mock.grpc.${operation}.${field}`, value
+    );
+  }
+
+  async function home() {
+    await driver.executeScript('window.location.pathname = "/"');
+    await driver.wait(until.elementLocated(By.xpath('//button[normalize-space()="Fetch Data"]')), DRIVER_WAIT);
+  }
+
+  async function fetchButton() {
+    return driver.findElement(By.xpath('//button[normalize-space()="Fetch Data"]'));
+  }
+
+  async function waitStatus(text) {
+    await driver.wait(async () => (await driver.findElement(By.css("header")).getText()).includes(text), DRIVER_WAIT);
+  }
+
+  async function waitReady() {
+    await waitStatus("Mock connected to gRPC server");
+    await driver.wait(async () => (await fetchButton()).isEnabled(), DRIVER_WAIT);
+  }
+
+  async function retry() {
+    await driver.findElement(By.xpath('//button[normalize-space()="Retry Connection"]')).click();
+  }
+
+  afterEach(async () => {
+    await driver.executeScript(`
+      for (const key of Object.keys(sessionStorage)) {
+        if (key.startsWith("roomtemp.mock.grpc.") || key.startsWith("roomtemp.mock.settings.save")) sessionStorage.removeItem(key);
+      }
+    `);
+    await home();
+    await waitReady();
+  });
+
+  it("rejects bad credentials, shows checking, and never fetches automatically", async () => {
+    await setMock("connect", "error", "authentication_failed");
+    await home();
+    await waitStatus("Authentication failed");
+    expect(await (await fetchButton()).isEnabled()).to.be.false;
+    const requests = await driver.executeScript('return sessionStorage.getItem("roomtemp.mock.graph.requests")');
+    await setMock("connect", "error", null);
+    await setMock("connect", "delay", "500");
+    await retry();
+    await waitStatus("Checking gRPC connection");
+    expect(await (await fetchButton()).isEnabled()).to.be.false;
+    await waitReady();
+    expect(await driver.executeScript('return sessionStorage.getItem("roomtemp.mock.graph.requests")')).to.equal(requests);
+  });
+
+  it("shows non-serving and incompatible service errors and supports retry", async () => {
+    for (const [code, message] of [
+      ["not_serving", "not serving"], ["incompatible_service", "required health check"],
+      ["unavailable", "unavailable"], ["timeout", "timed out"],
+    ]) {
+      await setMock("connect", "error", code);
+      await home();
+      await waitStatus(message);
+      expect(await (await fetchButton()).isEnabled()).to.be.false;
+      await setMock("connect", "error", null);
+      await retry();
+      await waitReady();
+    }
+  });
+
+  it("distinguishes empty data from request failures and clears previous charts", async () => {
+    await home();
+    await waitReady();
+    await (await fetchButton()).click();
+    await driver.wait(async () => (await driver.findElement(By.css("body")).getText()).includes("Temperature (℃)"), DRIVER_WAIT);
+    await setMock("graph", "empty", "1");
+    await (await fetchButton()).click();
+    await driver.wait(async () => (await driver.findElement(By.css("body")).getText()).includes("No data for the selected period"), DRIVER_WAIT);
+    expect((await driver.findElement(By.css("body")).getText())).not.to.include("Temperature (℃)");
+    await setMock("graph", "empty", null);
+    await setMock("graph", "error", "request_failed");
+    await (await fetchButton()).click();
+    await driver.wait(until.elementLocated(By.css('[role="alert"]')), DRIVER_WAIT);
+    expect(await driver.findElement(By.css('[role="alert"]')).getText()).to.include("graph request failed");
+    expect(await (await fetchButton()).isEnabled()).to.be.true;
+  });
+
+  it("invalidates connectivity after a graph authentication or timeout failure", async () => {
+    for (const [code, message] of [["authentication_failed", "Authentication failed"], ["timeout", "timed out"]]) {
+      await home();
+      await waitReady();
+      await setMock("graph", "error", code);
+      await (await fetchButton()).click();
+      await waitStatus(message);
+      expect(await (await fetchButton()).isEnabled()).to.be.false;
+      expect((await driver.findElement(By.css("body")).getText())).not.to.include("Temperature (℃)");
+      await setMock("graph", "error", null);
+      await retry();
+      await waitReady();
+    }
+  });
+
+  it("ignores a late failed connection after a newer successful settings update", async () => {
+    await driver.executeScript('window.location.pathname = "/settings"');
+    const update = await driver.wait(until.elementLocated(By.xpath('//button[normalize-space()="Update"]')), DRIVER_WAIT);
+    await driver.wait(async () => (await driver.findElement(By.css("#access-token")).getAttribute("value")) === "test-token", DRIVER_WAIT);
+    await setMock("connect", "error", "authentication_failed");
+    await setMock("connect", "delay", "800");
+    const count = Number(await driver.executeScript('return sessionStorage.getItem("roomtemp.mock.connections")'));
+    await update.click();
+    await driver.wait(async () => Number(await driver.executeScript('return sessionStorage.getItem("roomtemp.mock.connections")')) > count, DRIVER_WAIT);
+    await setMock("connect", "error", null);
+    await setMock("connect", "delay", null);
+    await update.click();
+    await waitStatus("Mock connected to gRPC server");
+    // Wait until the deliberately delayed obsolete result has arrived.
+    await driver.sleep(1000);
+    expect(await driver.findElement(By.css("header")).getText()).to.include("Mock connected to gRPC server");
+    expect(await driver.findElement(By.css("header")).getText()).not.to.include("Authentication failed");
+  });
+
+  it("disables settings controls during saving and restores connectivity on save failure", async () => {
+    await driver.executeScript('window.location.pathname = "/settings"');
+    const update = await driver.wait(until.elementLocated(By.xpath('//button[normalize-space()="Update"]')), DRIVER_WAIT);
+    await driver.wait(async () => (await driver.findElement(By.css("#access-token")).getAttribute("value")) === "test-token", DRIVER_WAIT);
+    const count = await driver.executeScript('return sessionStorage.getItem("roomtemp.mock.connections")');
+    await driver.executeScript('sessionStorage.setItem("roomtemp.mock.settings.save.delay", "500"); sessionStorage.setItem("roomtemp.mock.settings.save", "fail")');
+    await update.click();
+    await waitStatus("Saving settings");
+    expect(await update.isEnabled()).to.be.false;
+    expect(await driver.findElement(By.css("#access-token")).isEnabled()).to.be.false;
+    await driver.wait(until.elementLocated(By.css('[role="alert"]')), DRIVER_WAIT);
+    await waitStatus("Mock connected to gRPC server");
+    expect(await update.isEnabled()).to.be.true;
+    expect(await driver.executeScript('return sessionStorage.getItem("roomtemp.mock.connections")')).to.equal(count);
+  });
+
+  it("discards a graph result when reconnecting on another page", async () => {
+    await home();
+    await waitReady();
+    await setMock("graph", "delay", "800");
+    await (await fetchButton()).click();
+    await driver.findElement(By.css('a[href="/settings"]')).click();
+    const update = await driver.wait(until.elementLocated(By.xpath('//button[normalize-space()="Update"]')), DRIVER_WAIT);
+    await driver.wait(async () => (await driver.findElement(By.css("#access-token")).getAttribute("value")) === "test-token", DRIVER_WAIT);
+    await update.click();
+    await waitStatus("Mock connected to gRPC server");
+    await setMock("graph", "delay", null);
+    await setMock("graph", "empty", "1");
+    await home();
+    await waitReady();
+    await (await fetchButton()).click();
+    await driver.wait(async () => (await driver.findElement(By.css("body")).getText()).includes("No data for the selected period"), DRIVER_WAIT);
+    await driver.sleep(1000);
+    expect((await driver.findElement(By.css("body")).getText())).not.to.include("Temperature (℃)");
   });
 });
 

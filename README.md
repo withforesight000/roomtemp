@@ -218,3 +218,34 @@ cargo test --manifest-path src-tauri/Cargo.toml --locked --lib macos_legacy_prov
 Happy hacking!
 
 **Continuous Integration**: A GitHub Actions workflow runs on push and pull requests. It performs linting, the Tauri WebDriver end-to-end suite, Rust unit tests, and generates an `lcov.info` coverage artifact (uploaded on CI runs). See `.github/workflows/ci.yml` for details.
+
+### Verified gRPC connectivity
+
+The application checks `grpc.health.v1.Health/Check` for
+`tempgrpcd.v1.TempgrpcdService` using the same channel, TLS/proxy configuration
+and Bearer token as graph requests. Channel creation and the health check share
+a 10-second timeout. Only a `SERVING` response enables **Fetch Data**.
+This confirms authenticated gRPC availability; Redis readiness and the presence
+of data are checked only when fetching. Graph RPCs also have a 10-second limit.
+
+Fetching remains manual. Connection checks and settings saves disable fetching;
+reconnecting or changing settings clears old charts and ignores obsolete
+requests. A failed settings save preserves the previous settings and connection.
+Empty results display **No data for the selected period**. Authentication,
+unavailability and timeout errors clear verified connectivity; use **Retry
+Connection** to check again. Other graph errors allow another fetch.
+
+Deploy a tempgrpcd server with authenticated Health Check and Watch before
+distributing this client. The older public Health API accepts incorrect tokens
+and cannot verify credentials. Configure monitoring probes with Bearer
+authentication and verify valid-token success and invalid-token rejection
+through the actual TLS/proxy route before rollout. Roll back the client before
+restoring a server with public Health. No automatic reconnect or legacy Health
+fallback is provided.
+
+To repeat the real-server integration test, start an isolated tempgrpcd and Redis,
+then set `ROOMTEMP_TEST_GRPC_ENDPOINT` to its local HTTP endpoint and
+`ROOMTEMP_TEST_GRPC_TOKEN` to its disposable test token. Run
+`cargo test --manifest-path src-tauri/Cargo.toml updated_server_accepts_valid_credentials_and_rejects_invalid_credentials -- --ignored`.
+This test covers the real Health/data RPC combination, not the production
+TLS or proxy route. Do not use production credentials in this fixture.
