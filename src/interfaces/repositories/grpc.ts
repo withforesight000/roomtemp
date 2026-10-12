@@ -1,31 +1,18 @@
 import { invoke } from "@tauri-apps/api/core";
-import {
-  getMockGraphBuffer,
-  recordMockConnection,
-  isWebDriverMockEnabled,
-} from "@/mocks/webdriver";
+import type { ConnectionGateway, GraphDataRepository } from "@/usecases/ports/repositories";
+import { decodeIntoGraphData } from "@/frameworks/protobuf-ts";
+import { grpcOperation } from "@/frameworks/ipcError";
 
-export interface GrpcRepository {
-  connect(): Promise<string>;
-  fetchGraphData(_startDate: Date, _endDate: Date): Promise<ArrayBuffer>;
-}
-
-export class GrpcRepositoryImpl implements GrpcRepository {
-  async connect(): Promise<string> {
-    if (isWebDriverMockEnabled()) {
-      recordMockConnection();
-      return "Mock connected to gRPC server";
-    }
-    return invoke<string>("connect_to_grpc_server");
+export class TauriGrpcRepository implements ConnectionGateway, GraphDataRepository {
+  connect(): Promise<void> {
+    return grpcOperation(async () => { await invoke("connect_to_grpc_server"); });
   }
-
-  async fetchGraphData(startDate: Date, endDate: Date): Promise<ArrayBuffer> {
-    if (isWebDriverMockEnabled()) {
-      return getMockGraphBuffer();
-    }
-    return invoke<ArrayBuffer>("get_graph_data", {
-      startTime: startDate.getTime(),
-      endTime: endDate.getTime(),
+  fetchGraphData(startDate: Date, endDate: Date) {
+    return grpcOperation(async () => {
+      const buffer = await invoke<ArrayBuffer>("get_graph_data", {
+        startTime: startDate.getTime(), endTime: endDate.getTime(),
+      });
+      return decodeIntoGraphData(buffer);
     });
   }
 }

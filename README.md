@@ -63,7 +63,7 @@ Other tasks: `mise run lint`, `mise run build`, `mise run test:rust`, `mise run 
 
 ### Frontend E2E (Tauri WebDriver)
 
-WebDriver-driven end-to-end tests run against the real Tauri shell through the `tauri-driver` binary (`src-tauri/webdriver/test/test.js`). The suite enables `NEXT_PUBLIC_TAURI_WEBDRIVER_MOCKS` during the build so the UI always receives deterministic mock data without touching an external gRPC server.
+WebDriver-driven end-to-end tests run against the real Tauri shell through the `tauri-driver` binary (`src-tauri/webdriver/test/test.ts`). The suite enables `NEXT_PUBLIC_TAURI_WEBDRIVER_MOCKS` during the build so the UI always receives deterministic mock data without touching an external gRPC server.
 
 Before running the suite install the WebDriver stack:
 
@@ -72,6 +72,8 @@ cargo install tauri-driver --locked
 ```
 
 Make sure the appropriate native driver is available on `PATH` (WebKitWebDriver on Linux, `msedgedriver` on Windows) or provide a custom path via `TAURI_DRIVER_PATH`.
+
+The WebDriver suite is TypeScript executed directly by Mocha on Bun (`bunfig.toml` forces the Bun runtime). No Node.js TypeScript loader is needed. Its dedicated `src-tauri/webdriver/tsconfig.json` enables strict checking without including the Rust workspace in the frontend project. Both `typecheck` commands check this suite, and Biome includes its test sources.
 
 #### Running the suite inside Docker (macOS)
 
@@ -98,6 +100,16 @@ bun --bun run test:e2e
 ```
 
 `bun --bun run test:e2e` will build the Tauri app with the mock flag, start `tauri-driver` on port 4444, and execute the Mocha test harness through Selenium.
+
+### Frontend unit and Hook tests
+
+```sh
+bun --bun run test:frontend
+```
+
+The explicit `tests/frontend` directory keeps Bun from collecting the Mocha WebDriver suite. DOM globals are preloaded using happy-dom; React Testing Library runs the actual Hooks, including root Strict Mode setup/cleanup. Deferred promises control completion order without timing sleeps. Tests cover IPC contracts, decoder validation, synchronous duplicate admission, save/fetch races, delayed loads versus edits, and form/provider teardown.
+
+Run `bun --bun run lint` for both TypeScript versions and Biome. Run the Linux WebDriver suite separately: the simulated DOM does not replace the real Tauri WebView, and WebDriver mocks do not verify production authentication, TLS or secure storage. A malformed graph payload is a fetch error; valid empty protobuf and legacy JSON `{}` remain successful empty results.
 
 ### Rust unit tests & coverage
 
@@ -184,7 +196,10 @@ cargo test --manifest-path src-tauri/Cargo.toml --locked --lib macos_legacy_prov
 
 ## Architecture Overview
 
-- **Frontend:** React components fetch time-series data through a context-provided repository, transform it for visualization, and render with Recharts.
+- **Frontend:** Pages use injected application operations through `useFrontend`. Pure typed reducers manage connection, graph and form transitions; Hooks own asynchronous execution and React lifecycle.
+- **Application boundary:** `src/usecases/ports` defines connection, domain graph-data and settings contracts. Use cases import no React, Tauri, protobuf or mocks.
+- **Composition:** `src/frameworks/frontendServices.ts` selects Tauri or WebDriver adapters and the clock. Tauri adapters own IPC payloads and protobuf/legacy JSON decoding. Presenters own chart conversion and safe display messages.
+- **Concurrency:** The provider owns connection admission and the settings workflow. Generation, graph epoch and lifecycle guards reject stale work synchronously, including the interval before React rerenders. Saving clears graphs; a failed save restores connection availability without reconnecting or refetching. Successful persistence triggers reconnection even if the form has unmounted. Edited fields take precedence over delayed settings loads.
 - **Bridge:** `@tauri-apps/api` `invoke` calls proxy to Rust commands for establishing connections and retrieving protobuf payloads.
 - **Backend:** Tauri commands manage connection pooling, execute Diesel-backed use cases, and stream serialized protobuf responses to the UI.
 
@@ -197,10 +212,11 @@ cargo test --manifest-path src-tauri/Cargo.toml --locked --lib macos_legacy_prov
 │   ├── components/          # UI building blocks
 │   ├── data/                # Time-series adapters and fixtures
 │   ├── domain/              # Frontend domain models
-│   ├── frameworks/          # Proto decoding helpers
-│   ├── interfaces/          # Repositories, presenters, hooks, contexts
+│   ├── frameworks/          # Composition, IPC error mapping and proto decoding
+│   ├── interfaces/          # Adapters, presenters, React hooks/reducers/contexts
 │   ├── lib/                 # Shared utilities
-│   └── usecases/            # Frontend application services
+│   └── usecases/            # Application operations and repository ports
+├── tests/frontend/          # Application, adapter, decoder and Hook tests
 └── src-tauri/               # Tauri 2 Rust workspace
     ├── src/                 # Commands, controllers, repositories, infrastructure
     │   └── migration/       # Diesel migrations
@@ -217,4 +233,35 @@ cargo test --manifest-path src-tauri/Cargo.toml --locked --lib macos_legacy_prov
 
 Happy hacking!
 
-**Continuous Integration**: A GitHub Actions workflow runs on push and pull requests. It performs linting, the Tauri WebDriver end-to-end suite, Rust unit tests, and generates an `lcov.info` coverage artifact (uploaded on CI runs). See `.github/workflows/ci.yml` for details.
+**Continuous Integration**: A GitHub Actions workflow runs on push and pull requests. It performs linting, frontend unit/Hook tests, the Tauri WebDriver end-to-end suite, Rust unit tests, and generates an `lcov.info` coverage artifact (uploaded on CI runs). See `.github/workflows/ci.yml` for details.
+
+### Verified gRPC connectivity
+
+The application checks `grpc.health.v1.Health/Check` for
+`tempgrpcd.v1.TempgrpcdService` using the same channel, TLS/proxy configuration
+and Bearer token as graph requests. Channel creation and the health check share
+a 10-second timeout. Only a `SERVING` response enables **Fetch Data**.
+This confirms authenticated gRPC availability; Redis readiness and the presence
+of data are checked only when fetching. Graph RPCs also have a 10-second limit.
+
+Fetching remains manual. Connection checks and settings saves disable fetching;
+reconnecting or changing settings clears old charts and ignores obsolete
+requests. A failed settings save preserves the previous settings and connection.
+Empty results display **No data for the selected period**. Authentication,
+unavailability and timeout errors clear verified connectivity; use **Retry
+Connection** to check again. Other graph errors allow another fetch.
+
+Deploy a tempgrpcd server with authenticated Health Check and Watch before
+distributing this client. The older public Health API accepts incorrect tokens
+and cannot verify credentials. Configure monitoring probes with Bearer
+authentication and verify valid-token success and invalid-token rejection
+through the actual TLS/proxy route before rollout. Roll back the client before
+restoring a server with public Health. No automatic reconnect or legacy Health
+fallback is provided.
+
+To repeat the real-server integration test, start an isolated tempgrpcd and Redis,
+then set `ROOMTEMP_TEST_GRPC_ENDPOINT` to its local HTTP endpoint and
+`ROOMTEMP_TEST_GRPC_TOKEN` to its disposable test token. Run
+`cargo test --manifest-path src-tauri/Cargo.toml updated_server_accepts_valid_credentials_and_rejects_invalid_credentials -- --ignored`.
+This test covers the real Health/data RPC combination, not the production
+TLS or proxy route. Do not use production credentials in this fixture.

@@ -1,21 +1,21 @@
 "use client";
 
-import { useContext, useState } from "react";
+import { useState } from "react";
 import { useGraphData } from "@/interfaces/react/hooks/useGraphData";
 import { GraphChart } from "@/interfaces/react/components/GraphChart";
 import { Button } from "@/components/ui/button";
 import { DateTimePicker24h } from "@/components/ui/expansions/datetime-picker";
-import { GrpcRepoContext } from "@/interfaces/react/contexts/grpcRepoContext";
-import { isWebDriverMockEnabled, MOCK_REFERENCE_TIME } from "@/mocks/webdriver";
+import { useFrontend } from "@/interfaces/react/contexts/grpcRepoContext";
 
 export default function Home() {
-  const { grpcRepo } = useContext(GrpcRepoContext);
-  const referenceTime = isWebDriverMockEnabled() ? MOCK_REFERENCE_TIME : Date.now();
+  const frontend = useFrontend();
+  const { operations, now } = frontend;
+  const referenceTime = now();
   const [start, setStart] = useState<Date>(
     new Date(referenceTime - 6 * 60 * 60 * 1000)
   ); // 6 hours ago
   const [end, setEnd] = useState<Date>(new Date(referenceTime));
-  const { data, fetch, loading, error } = useGraphData(grpcRepo);
+  const { data, fetch, loading, error, hasFetched, ready } = useGraphData(operations, frontend);
 
   return (
     <div>
@@ -33,10 +33,11 @@ export default function Home() {
             <DateTimePicker24h value={end} onChange={(end) => setEnd(end)} />
           </div>
         </div>
-        <Button onClick={() => fetch(start, end)} disabled={loading}>
+        <Button onClick={() => fetch(start, end)} disabled={!ready || loading}>
           Fetch Data
         </Button>
-        {error && <p className="text-red-500">{error}</p>}
+        {error && <p role="alert" className="text-red-500">{error}</p>}
+        {ready && hasFetched && data.length === 0 && <p>No data for the selected period</p>}
         {data.length > 0 && (
           <GraphChart
             key={`temperature-${data[0]?.time ?? "empty"}-${data[data.length - 1]?.time ?? "empty"}`}

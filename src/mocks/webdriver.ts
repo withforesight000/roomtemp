@@ -35,9 +35,13 @@ export function getMockGraphData(): GraphData {
   return new Map(GRAPH_DATA_MAP);
 }
 
-export async function getMockGraphBuffer(): Promise<ArrayBuffer> {
+export async function getMockGraphBuffer(empty = false): Promise<ArrayBuffer> {
+  if (WEBDRIVER_MOCK_FLAG && typeof window !== "undefined" &&
+      window.sessionStorage.getItem("roomtemp.mock.grpc.graph.malformed") === "1") {
+    return new Uint8Array([255]).buffer;
+  }
   const { GetAmbientConditionsResponse } = await import("@withforesight/tempgrpcd-protos");
-  const bytes = GetAmbientConditionsResponse.toBinary({ ambientConditions: ambientPayload });
+  const bytes = GetAmbientConditionsResponse.toBinary({ ambientConditions: empty ? {} : ambientPayload });
   return Uint8Array.from(bytes).buffer;
 }
 
@@ -55,4 +59,28 @@ export function recordMockConnection(): void {
     const count = Number(window.sessionStorage.getItem(key) ?? "0");
     window.sessionStorage.setItem(key, String(count + 1));
   }
+}
+
+// Snapshot each operation so tests can resolve overlapping requests in reverse order.
+export async function mockGrpcOperation(operation: "connect" | "graph"): Promise<boolean> {
+  if (!WEBDRIVER_MOCK_FLAG || typeof window === "undefined") return false;
+  const prefix = `roomtemp.mock.grpc.${operation}`;
+  const code = window.sessionStorage.getItem(`${prefix}.error`);
+  const delay = Number(window.sessionStorage.getItem(`${prefix}.delay`) ?? "0");
+  const empty = window.sessionStorage.getItem(`${prefix}.empty`) === "1";
+  if (operation === "graph") {
+    const key = "roomtemp.mock.graph.requests";
+    window.sessionStorage.setItem(key, String(Number(window.sessionStorage.getItem(key) ?? "0") + 1));
+  }
+  if (delay > 0) await new Promise(resolve => setTimeout(resolve, delay));
+  if (code) {
+    throw { code };
+  }
+  return empty;
+}
+
+export async function waitMockSettingsSave(): Promise<void> {
+  if (!WEBDRIVER_MOCK_FLAG || typeof window === "undefined") return;
+  const delay = Number(window.sessionStorage.getItem("roomtemp.mock.settings.save.delay") ?? "0");
+  if (delay > 0) await new Promise(resolve => setTimeout(resolve, delay));
 }

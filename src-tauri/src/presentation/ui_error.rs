@@ -20,12 +20,6 @@ impl serde::Serialize for UIError {
     }
 }
 
-pub fn url_access_token_empty_error() -> UIError {
-    UIError {
-        message: "URL or access token is empty".into(),
-    }
-}
-
 impl From<SettingsError> for UIError {
     fn from(err: SettingsError) -> Self {
         match err {
@@ -174,9 +168,21 @@ impl From<GrpcClientError> for UIError {
             GrpcClientError::Transport(_) => UIError {
                 message: "grpc: transport error occurred".into(),
             },
+            GrpcClientError::Health(_) | GrpcClientError::NotServing | GrpcClientError::Timeout => {
+                UIError {
+                    message: "grpc: health verification failed".into(),
+                }
+            }
             GrpcClientError::InvalidAuthToken(_) => UIError {
                 message: "grpc: invalid auth token detected".into(),
             },
         }
+    }
+}
+
+/// Reports a failed shared-state lock without leaking internal details.
+pub fn connection_state_error() -> UIError {
+    UIError {
+        message: "Connection state is unavailable".into(),
     }
 }
