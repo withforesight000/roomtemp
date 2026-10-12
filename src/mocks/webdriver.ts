@@ -70,8 +70,7 @@ export async function mockGrpcOperation(operation: "connect" | "graph"): Promise
   }
   if (delay > 0) await new Promise(resolve => setTimeout(resolve, delay));
   if (code) {
-    const { normalizeGrpcError } = await import("@/domain/grpcError");
-    throw normalizeGrpcError({ code });
+    throw { code };
   }
   return empty;
 }

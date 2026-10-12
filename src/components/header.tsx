@@ -1,13 +1,12 @@
 "use client";
 
-import { GrpcRepoContext } from "@/interfaces/react/contexts/grpcRepoContext";
+import { useFrontend } from "@/interfaces/react/contexts/grpcRepoContext";
 import { CircleCheck, CircleX, Home, MoveLeft, Settings } from "lucide-react";
-import { useContext } from "react";
 import { Card, CardContent } from "./ui/card";
 import { usePathname, useRouter } from "next/navigation";
 
 export function Header() {
-  const { state: grpcConnectState, connect } = useContext(GrpcRepoContext);
+  const { state: grpcConnectState, connect } = useFrontend();
   const pathname = usePathname();
   const router = useRouter();
   const showBackButton = pathname !== "/";

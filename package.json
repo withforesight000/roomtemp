@@ -14,7 +14,8 @@
     "test:rust:coverage": "(cd src-tauri && cargo llvm-cov --workspace)",
     "webdriver:e2e": "mocha src-tauri/webdriver/test/test.js",
     "typecheck:compat": "tsc6 --noEmit",
-    "lint:biome": "biome lint src --error-on-warnings"
+    "lint:biome": "biome lint src --error-on-warnings",
+    "test:frontend": "bun test --preload ./tests/frontend/setup.ts ./tests/frontend"
   },
   "dependencies": {
     "@protobuf-ts/runtime": "^2.11.1",
@@ -49,8 +50,11 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.15",
+    "@happy-dom/global-registrator": "^20.14.6",
     "@protobuf-ts/plugin": "^2.11.1",
     "@tauri-apps/cli": "^2.12.2",
+    "@testing-library/react": "^16.3.3",
+    "@types/bun": "^1.4.2",
     "@types/node": "^26.6.5",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",

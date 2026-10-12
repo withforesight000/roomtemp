@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from "react";
-import { FetchGraphData } from "@/usecases/fetchGraphData";
-import { GrpcRepository } from "@/interfaces/repositories/grpc";
+import type { FrontendOperations } from "@/usecases/frontendOperations";
 import { presentGraphData, RechartPoint } from "@/interfaces/presenters/graphPresenter";
 import { ConnectionState } from "./useGrpcConnect";
-import { GrpcError, invalidatesConnection, normalizeGrpcError } from "@/domain/grpcError";
+import { OperationFailure, invalidatesConnection, operationFailure } from "@/usecases/operationError";
+import { presentOperationError } from "@/interfaces/presenters/errorPresenter";
 
 export function useGraphData(
-  grpcRepo: GrpcRepository, connection: ConnectionState,
-  connectionFailed: (_error: GrpcError, _generation: number) => void,
+  operations: FrontendOperations, connection: ConnectionState,
+  connectionFailed: (_error: OperationFailure, _generation: number) => void,
 ) {
   const [resultGeneration, setResultGeneration] = useState(-1);
   const [data, setData] = useState<RechartPoint[]>([]);
@@ -42,15 +42,15 @@ export function useGraphData(
     setData([]);
     setHasFetched(false);
     try {
-      const response = await new FetchGraphData(grpcRepo).execute(startDate, endDate);
+      const response = await operations.fetchGraphData(startDate, endDate);
       if (!active()) return;
       setData(presentGraphData(response));
       setHasFetched(true);
     } catch (failure: unknown) {
       if (!active()) return;
-      const err = normalizeGrpcError(failure);
+      const err = operationFailure(failure);
       if (err.code === "superseded") return;
-      setError(err.message);
+      setError(presentOperationError(err));
       if (invalidatesConnection(err)) connectionFailed(err, generation);
     } finally {
       if (active()) setLoading(false);

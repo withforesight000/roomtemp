@@ -1,7 +1,6 @@
 "use client";
 
-import React, { useContext, useEffect, useMemo } from "react";
-import { SettingsRepositoryImpl } from "@/interfaces/repositories/settings";
+import React, { useEffect } from "react";
 import { useSettings } from "@/interfaces/react/hooks/useSettings";
 import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -15,18 +14,17 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { GrpcRepoContext } from "@/interfaces/react/contexts/grpcRepoContext";
+import { useFrontend } from "@/interfaces/react/contexts/grpcRepoContext";
 import { Checkbox } from "@/components/ui/checkbox";
 
 export default function SettingsPage() {
-  const settingsRepo = useMemo(() => new SettingsRepositoryImpl(), []);
-  const { connect, state: connectionState, beginSave, finishSave } = useContext(GrpcRepoContext);
+  const { operations, connect, state: connectionState, beginSave, finishSave } = useFrontend();
   const {
     state: settingsState,
     dispatch,
     load,
     save,
-  } = useSettings(settingsRepo);
+  } = useSettings(operations);
 
   const saveSettings = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();

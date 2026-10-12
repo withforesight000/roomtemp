@@ -1,14 +1,9 @@
 import { useCallback, useReducer } from "react";
-import { SettingsRepository } from "@/interfaces/repositories/settings";
+import type { FrontendOperations } from "@/usecases/frontendOperations";
+import { presentSettingsError } from "@/interfaces/presenters/errorPresenter";
 import { Settings } from "@/domain/types";
 
 type State = Settings & { error?: string };
-
-function errorMessage(error: unknown): string {
-  if (typeof error === "string") return error;
-  if (error instanceof Error) return error.message;
-  return "Settings could not be accessed";
-}
 
 function reducer(
   state: State,
@@ -26,7 +21,7 @@ function reducer(
   }
 }
 
-export function useSettings(repo: SettingsRepository) {
+export function useSettings(operations: FrontendOperations) {
   const [state, dispatch] = useReducer(reducer, {
     url: "",
     accessToken: "",
@@ -37,16 +32,16 @@ export function useSettings(repo: SettingsRepository) {
 
   const load = useCallback(async () => {
     try {
-      const settings = await repo.load();
+      const settings = await operations.loadSettings();
       dispatch({ type: "LOAD", payload: settings });
     } catch (error: unknown) {
-      dispatch({ type: "SET_ERROR", payload: { error: errorMessage(error) } });
+      dispatch({ type: "SET_ERROR", payload: { error: presentSettingsError(error) } });
     }
-  }, [repo]);
+  }, [operations]);
 
   const save = useCallback(async () => {
     try {
-      await repo.save({
+      await operations.saveSettings({
         url: state.url,
         accessToken: state.accessToken,
         useProxies: state.useProxies,
@@ -55,10 +50,10 @@ export function useSettings(repo: SettingsRepository) {
       dispatch({ type: "SET_ERROR", payload: { error: undefined } });
       return true;
     } catch (error: unknown) {
-      dispatch({ type: "SET_ERROR", payload: { error: errorMessage(error) } });
+      dispatch({ type: "SET_ERROR", payload: { error: presentSettingsError(error) } });
     }
     return false;
-  }, [repo, state.accessToken, state.proxyUrl, state.url, state.useProxies]);
+  }, [operations, state.accessToken, state.proxyUrl, state.url, state.useProxies]);
 
   return { state, dispatch, load, save };
 }

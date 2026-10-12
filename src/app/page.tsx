@@ -1,21 +1,20 @@
 "use client";
 
-import { useContext, useState } from "react";
+import { useState } from "react";
 import { useGraphData } from "@/interfaces/react/hooks/useGraphData";
 import { GraphChart } from "@/interfaces/react/components/GraphChart";
 import { Button } from "@/components/ui/button";
 import { DateTimePicker24h } from "@/components/ui/expansions/datetime-picker";
-import { GrpcRepoContext } from "@/interfaces/react/contexts/grpcRepoContext";
-import { isWebDriverMockEnabled, MOCK_REFERENCE_TIME } from "@/mocks/webdriver";
+import { useFrontend } from "@/interfaces/react/contexts/grpcRepoContext";
 
 export default function Home() {
-  const { grpcRepo, state, connectionFailed } = useContext(GrpcRepoContext);
-  const referenceTime = isWebDriverMockEnabled() ? MOCK_REFERENCE_TIME : Date.now();
+  const { operations, now, state, connectionFailed } = useFrontend();
+  const referenceTime = now();
   const [start, setStart] = useState<Date>(
     new Date(referenceTime - 6 * 60 * 60 * 1000)
   ); // 6 hours ago
   const [end, setEnd] = useState<Date>(new Date(referenceTime));
-  const { data, fetch, loading, error, hasFetched, ready } = useGraphData(grpcRepo, state, connectionFailed);
+  const { data, fetch, loading, error, hasFetched, ready } = useGraphData(operations, state, connectionFailed);
 
   return (
     <div>
