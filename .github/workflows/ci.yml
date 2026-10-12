@@ -19,6 +19,8 @@ jobs:
         uses: jdx/mise-action@v5
         with:
           version: 2026.10.8
+          # Rust toolchains live in RUSTUP_HOME, outside mise-action's tool cache.
+          cache: false
 
       - name: Prepare application tools without Node
         shell: bash
@@ -107,7 +109,8 @@ jobs:
         uses: jdx/mise-action@v5
         with:
           version: 2026.10.8
-          cache_key_prefix: mise-rust
+          # Rust toolchains live in RUSTUP_HOME, outside mise-action's tool cache.
+          cache: false
 
       - uses: cargo-bins/cargo-binstall@main
 
