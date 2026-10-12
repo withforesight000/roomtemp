@@ -130,6 +130,57 @@ test("an old graph cannot replace a newer result after reconnect", async () => {
   expect(result.current.graph.hasFetched).toBe(true);
 });
 
+test("an old graph completion cannot release a newer pending graph's admission guard", async () => {
+  const old = deferred<GraphData>();
+  const newer = deferred<GraphData>();
+  let calls = 0;
+  const api = operations({ fetchGraphData: () => ++calls === 1 ? old.promise : newer.promise });
+  const { result } = renderHook(() => {
+    const connection = useGrpcConnect(api);
+    return { connection, graph: useGraphData(api, connection) };
+  });
+  await flush();
+  let oldRequest!: Promise<void>, newerRequest!: Promise<void>;
+  act(() => { oldRequest = result.current.graph.fetch(...dates); });
+  await act(async () => { await result.current.connection.connect(); });
+  act(() => { newerRequest = result.current.graph.fetch(...dates); });
+  await act(async () => { old.resolve(data); await oldRequest; });
+
+  expect(result.current.graph.loading).toBe(true);
+  expect(result.current.graph.data).toEqual([]);
+  await act(async () => { await result.current.graph.fetch(...dates); });
+  expect(calls).toBe(2);
+  await act(async () => { newer.resolve(new Map()); await newerRequest; });
+  expect(result.current.graph.loading).toBe(false);
+  expect(result.current.graph.hasFetched).toBe(true);
+  expect(result.current.graph.data).toEqual([]);
+});
+
+test("a failed save rejects an old render's fetch before the graph rerenders", async () => {
+  let calls = 0;
+  const api = operations({ fetchGraphData: async () => { calls++; return data; } });
+  const { result } = renderHook(() => {
+    const connection = useGrpcConnect(api);
+    return { connection, graph: useGraphData(api, connection) };
+  });
+  await flush();
+  await act(async () => { await result.current.graph.fetch(...dates); });
+  expect(result.current.graph.data).toHaveLength(1);
+  const oldFetch = result.current.graph.fetch;
+  await act(async () => {
+    const token = result.current.connection.beginSave()!;
+    result.current.connection.finishSave(false, token);
+    await oldFetch(...dates);
+  });
+  expect(calls).toBe(1);
+  expect(result.current.connection.state.phase).toBe("ready");
+  expect(result.current.graph.data).toEqual([]);
+  expect(result.current.graph.hasFetched).toBe(false);
+  await act(async () => { await result.current.graph.fetch(...dates); });
+  expect(calls).toBe(2);
+  expect(result.current.graph.data).toHaveLength(1);
+});
+
 for (const code of ["authentication_failed", "unavailable", "timeout", "request_failed"] as const) {
   test(`graph teardown forwards ${code} only when it invalidates the connection`, async () => {
     const response = deferred<GraphData>();

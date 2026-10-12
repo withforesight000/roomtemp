@@ -48,6 +48,22 @@ test("a load begun before a save cannot replace submitted fields", async () => {
   expect(result.current.form.state.values.url).toBe("https://new.example");
   expect(result.current.form.state.values.accessToken).toBe("");
 });
+test("a load failure begun before a save cannot overwrite the save result", async () => {
+  const load = deferred<Settings>();
+  const api = operations({
+    loadSettings: () => load.promise,
+    saveSettings: async () => { throw "save failed"; },
+  });
+  const { result } = harness(api);
+  await flush();
+  act(() => { result.current.form.setField({ field: "url", value: "https://new.example" }); });
+  await act(async () => { expect(await result.current.form.save()).toBe(false); });
+  expect(result.current.form.state.error).toBe("save failed");
+  await act(async () => { load.reject("obsolete load failed"); });
+  expect(result.current.form.state.error).toBe("save failed");
+  expect(result.current.form.state.values.url).toBe("https://new.example");
+});
+
 test("duplicate save admission persists once and does not hide the actual failure", async () => {
   const persistence = deferred<void>();
   let calls = 0;
