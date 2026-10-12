@@ -195,12 +195,49 @@ mod tests {
             use_proxies: true,
             proxy_url: "http://p".into(),
         };
+        KeyStore::test_key_calls();
         repo.set(s.clone()).expect("set ok");
+        assert_eq!(KeyStore::test_key_calls(), vec![true]);
+
+        repo.set(s.clone()).expect("update ok");
+        assert_eq!(KeyStore::test_key_calls(), vec![false]);
+        let before = schema::settings::table
+            .first::<SettingEntity>(&mut repo.conn)
+            .unwrap();
+        KeyStore::with_missing_test_key(|| {
+            assert!(matches!(
+                repo.get(),
+                Err(DieselSettingsRepositoryError::Keystore(
+                    crate::infrastructure::keystore::KeystoreError::NoEntry
+                ))
+            ));
+            assert_eq!(KeyStore::test_key_calls(), vec![false]);
+            let mut changed = s.clone();
+            changed.access_token = "replacement".into();
+            assert!(matches!(
+                repo.set(changed),
+                Err(DieselSettingsRepositoryError::Keystore(
+                    crate::infrastructure::keystore::KeystoreError::NoEntry
+                ))
+            ));
+            assert_eq!(KeyStore::test_key_calls(), vec![false]);
+        });
+        let after = schema::settings::table
+            .first::<SettingEntity>(&mut repo.conn)
+            .unwrap();
+        assert_eq!(before.encrypted_access_token, after.encrypted_access_token);
+        assert_eq!(
+            before.encrypted_access_token_nonce,
+            after.encrypted_access_token_nonce
+        );
+        assert_eq!(before.url, after.url);
 
         // New connection / repo to ensure persistence
         let conn2 = pool.get().unwrap();
         let mut repo2 = DieselSettingsRepository { conn: conn2 };
         let got = repo2.get().expect("get ok").expect("some");
+        assert_eq!(KeyStore::test_key_calls(), vec![false]);
+        assert_eq!(got.access_token, "tok");
 
         assert_eq!(got.url, "https://example.com");
         assert_eq!(got.use_proxies, true);
@@ -230,7 +267,9 @@ mod tests {
         let conn = pool.get().unwrap();
         let mut repo = DieselSettingsRepository { conn };
 
+        KeyStore::test_key_calls();
         let maybe = repo.get().expect("get ok");
+        assert_eq!(KeyStore::test_key_calls(), vec![true]);
         assert!(maybe.is_some());
         let s = maybe.unwrap();
         assert_eq!(s.id, 1);

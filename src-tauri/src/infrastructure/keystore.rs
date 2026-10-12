@@ -10,6 +10,12 @@ static KEY_LOCK: Mutex<()> = Mutex::new(());
 #[cfg(test)]
 static TEST_KEY_OVERRIDE: OnceCell<[u8; 32]> = OnceCell::new();
 
+#[cfg(test)]
+thread_local! {
+    static TEST_KEY_CALLS: std::cell::RefCell<Vec<bool>> = const { std::cell::RefCell::new(Vec::new()) };
+    static TEST_MISSING_KEY: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
 pub fn init_service(name: &str) {
     SERVICE.set(name.to_string()).ok();
 }
@@ -163,8 +169,14 @@ impl KeyStore {
 
     fn key(allow_create: bool) -> Result<[u8; 32], KeystoreError> {
         #[cfg(test)]
-        if let Some(key) = TEST_KEY_OVERRIDE.get() {
-            return Ok(*key);
+        {
+            TEST_KEY_CALLS.with(|calls| calls.borrow_mut().push(allow_create));
+            if TEST_MISSING_KEY.with(|missing| missing.get()) {
+                return Err(KeystoreError::NoEntry);
+            }
+            if let Some(key) = TEST_KEY_OVERRIDE.get() {
+                return Ok(*key);
+            }
         }
         let _guard = KEY_LOCK.lock().map_err(|_| KeystoreError::Other)?;
         #[cfg(target_os = "linux")]
@@ -200,6 +212,24 @@ impl KeyStore {
     #[cfg(test)]
     pub fn set_test_key(key: [u8; 32]) {
         let _ = TEST_KEY_OVERRIDE.set(key);
+    }
+
+    #[cfg(test)]
+    pub fn test_key_calls() -> Vec<bool> {
+        TEST_KEY_CALLS.with(|calls| std::mem::take(&mut *calls.borrow_mut()))
+    }
+
+    #[cfg(test)]
+    pub fn with_missing_test_key<T>(action: impl FnOnce() -> T) -> T {
+        struct Reset;
+        impl Drop for Reset {
+            fn drop(&mut self) {
+                TEST_MISSING_KEY.with(|missing| missing.set(false));
+            }
+        }
+        TEST_MISSING_KEY.with(|missing| missing.set(true));
+        let _reset = Reset;
+        action()
     }
 
     fn generate_key() -> [u8; 32] {
