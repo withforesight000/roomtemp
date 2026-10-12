@@ -70,7 +70,7 @@ test("graph admission is synchronous and manual", async () => {
   await act(async () => { response.resolve(data); await pending; });
   expect(result.current.graph.data).toHaveLength(1);
 });
-test("save admission blocks fetch and stale failure before the next render", async () => {
+test("a failed save preserves connection invalidation from an in-flight graph", async () => {
   const response = deferred<GraphData>();
   let calls = 0;
   const api = operations({ fetchGraphData: () => { calls++; return response.promise; } });
@@ -89,7 +89,9 @@ test("save admission blocks fetch and stale failure before the next render", asy
     result.current.connection.finishSave(false, token);
   });
   expect(calls).toBe(1);
-  expect(result.current.connection.state.phase).toBe("ready");
+  expect(result.current.connection.state.isSaving).toBe(false);
+  expect(result.current.connection.snapshot().ready).toBe(false);
+  expect(result.current.connection.state.phase).toBe("error");
   expect(result.current.graph.data).toEqual([]);
   expect(result.current.graph.hasFetched).toBe(false);
 });
@@ -165,4 +167,25 @@ test("an obsolete graph failure cannot invalidate a newer connection", async () 
   await act(async () => { await result.current.connection.connect(); });
   await act(async () => { response.reject(new OperationFailure("authentication_failed")); await pending; });
   expect(result.current.connection.state.phase).toBe("ready");
+});
+
+test("successful persistence reconnects after invalidation during saving", async () => {
+  const api = operations();
+  const { result } = renderHook(() => useGrpcConnect(api));
+  await flush();
+  const generation = result.current.snapshot().generation;
+  let token!: NonNullable<ReturnType<ConnectionSession["beginSave"]>>;
+  act(() => {
+    token = result.current.beginSave()!;
+    result.current.connectionFailed(new OperationFailure("timeout"), generation);
+  });
+  expect(result.current.state.phase).toBe("error");
+  expect(result.current.state.isSaving).toBe(true);
+  await act(async () => {
+    result.current.finishSave(true, token);
+    await result.current.connect();
+    result.current.connectionFailed(new OperationFailure("authentication_failed"), generation);
+  });
+  expect(result.current.state.phase).toBe("ready");
+  expect(result.current.state.isSaving).toBe(false);
 });

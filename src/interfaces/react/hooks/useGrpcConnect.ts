@@ -58,7 +58,7 @@ export function useGrpcConnect(operations: Pick<FrontendOperations, "connect">) 
   }, []);
   const connectionFailed = useCallback((error: OperationFailure, generation: number) => {
     const session = gate.current;
-    if (!session.active || session.saving || session.generation !== generation) return;
+    if (!session.active || session.generation !== generation) return;
     session.ready = false;
     session.generation++;
     session.graphEpoch++;
