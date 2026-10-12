@@ -63,7 +63,7 @@ Other tasks: `mise run lint`, `mise run build`, `mise run test:rust`, `mise run 
 
 ### Frontend E2E (Tauri WebDriver)
 
-WebDriver-driven end-to-end tests run against the real Tauri shell through the `tauri-driver` binary (`src-tauri/webdriver/test/test.js`). The suite enables `NEXT_PUBLIC_TAURI_WEBDRIVER_MOCKS` during the build so the UI always receives deterministic mock data without touching an external gRPC server.
+WebDriver-driven end-to-end tests run against the real Tauri shell through the `tauri-driver` binary (`src-tauri/webdriver/test/test.ts`). The suite enables `NEXT_PUBLIC_TAURI_WEBDRIVER_MOCKS` during the build so the UI always receives deterministic mock data without touching an external gRPC server.
 
 Before running the suite install the WebDriver stack:
 
@@ -72,6 +72,8 @@ cargo install tauri-driver --locked
 ```
 
 Make sure the appropriate native driver is available on `PATH` (WebKitWebDriver on Linux, `msedgedriver` on Windows) or provide a custom path via `TAURI_DRIVER_PATH`.
+
+The WebDriver suite is TypeScript executed directly by Mocha on Bun (`bunfig.toml` forces the Bun runtime). No Node.js TypeScript loader is needed. Its dedicated `src-tauri/webdriver/tsconfig.json` enables strict checking without including the Rust workspace in the frontend project. Both `typecheck` commands check this suite, and Biome includes its test sources.
 
 #### Running the suite inside Docker (macOS)
 

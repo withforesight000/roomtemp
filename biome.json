@@ -24,7 +24,8 @@
       }
     },
     "includes": [
-      "src/**/*.{ts,tsx,js,jsx}"
+      "src/**/*.{ts,tsx,js,jsx}",
+      "src-tauri/webdriver/test/**/*.ts"
     ]
   },
   "assist": {
