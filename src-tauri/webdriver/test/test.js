@@ -23,8 +23,8 @@ before(async function () {
   this.timeout(300000);
 
   const build = spawnSync(
-    "pnpm",
-    ["tauri", "build", "--no-bundle"],
+    "bun",
+    ["--bun", "run", "tauri", "build", "--no-bundle"],
     {
       cwd: ROOT_DIR,
       env: MOCK_ENV,
@@ -37,7 +37,7 @@ before(async function () {
     throw build.error;
   }
   if (build.status !== 0) {
-    throw new Error("pnpm tauri build failed");
+    throw new Error("bun --bun run tauri build failed");
   }
 
   const releaseCandidate = path.resolve(
@@ -56,7 +56,7 @@ before(async function () {
 
   if (!builtApplicationPath) {
     throw new Error(
-      `Built application not found at either ${releaseCandidate} or ${debugCandidate}. Run pnpm tauri build manually.`
+      `Built application not found at either ${releaseCandidate} or ${debugCandidate}. Run bun --bun run tauri build manually.`
     );
   }
 

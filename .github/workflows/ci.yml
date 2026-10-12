@@ -13,28 +13,42 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Cache pnpm store
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: .bun-version
+
+      - name: Prepare application tools without Node
+        shell: bash
+        run: |
+          tool_dir="$RUNNER_TEMP/roomtemp-without-node"
+          mkdir -p "$tool_dir"
+          IFS=: read -ra tool_paths <<< "$PATH"
+          for tool_path in "${tool_paths[@]}"; do
+            for tool in "$tool_path"/*; do
+              [ -f "$tool" ] && [ -x "$tool" ] || continue
+              tool_name="${tool##*/}"
+              case "$tool_name" in node|nodejs|npm|npx|pnpm|pnpx|corepack) continue ;; esac
+              [ -e "$tool_dir/$tool_name" ] || ln -s "$tool" "$tool_dir/$tool_name"
+            done
+          done
+          echo "ROOMTEMP_TOOL_PATH=$tool_dir:$HOME/.cargo/bin" >> "$GITHUB_ENV"
+
+      - name: Cache Bun packages
         uses: actions/cache@v4
         with:
-          path: |
-            ~/.pnpm-store
-            node_modules
-          key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '24.16.0'
-
-      - name: Enable corepack (pnpm)
-        run: |
-          corepack enable
-          corepack prepare pnpm@12.11.2 --activate
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-${{ runner.arch }}-bun-${{ hashFiles('.bun-version', 'bun.lock', 'bunfig.toml', 'package.json') }}
 
       - name: Install dependencies
-        run: pnpm install
+        run: |
+          export PATH="$ROOMTEMP_TOOL_PATH"
+          for tool in node nodejs npm npx pnpm pnpx corepack; do
+            if command -v "$tool"; then
+              exit 1
+            fi
+          done
+          bun install --frozen-lockfile
 
       - name: Install Tauri native libraries
         run: |
@@ -55,11 +69,14 @@ jobs:
 
       - name: Run typecheck
         run: |
-          pnpm run typecheck
-          pnpm run typecheck:compat
+          export PATH="$ROOMTEMP_TOOL_PATH"
+          bun --bun run typecheck
+          bun --bun run typecheck:compat
 
       - name: Run ESLint
-        run: pnpm run lint:eslint
+        run: |
+          export PATH="$ROOMTEMP_TOOL_PATH"
+          bun --bun run lint:eslint
 
       - name: Setup Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v1
@@ -75,7 +92,9 @@ jobs:
         env:
           CI: true
           NEXT_TELEMETRY_DISABLED: 1
-        run: xvfb-run -a pnpm test:e2e
+        run: |
+          export PATH="$ROOMTEMP_TOOL_PATH"
+          xvfb-run -a bun --bun run test:e2e
   rust-tests:
     name: "Rust: tests & coverage"
     runs-on: ubuntu-latest

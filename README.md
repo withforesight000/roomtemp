@@ -14,24 +14,43 @@ RoomTemp is a cross-platform desktop and mobile application that visualizes ambi
 - **Frontend:** Next.js 16 (App Router), React 19, Tailwind CSS, shadcn/ui, Recharts.
 - **Bridge:** Tauri 2 with IPC commands exposed through `@tauri-apps/api`.
 - **Backend:** Rust 1.98.1 (edition 2024; the toolchain used in local checks), Diesel + SQLite, tonic gRPC client, ChaCha20-Poly1305 encryption.
-- **Proto definitions:** TypeScript bindings from `@withforesight/tempgrpcd-protos` on `withforesight000/protobuf-ts` (HTTPS) and Rust bindings from `tempgrpcd-protos` on `withforesight000/protobuf-rust` (HTTPS).
+- **Proto definitions:** TypeScript bindings from the versioned `tempgrpcd-protos-v0.1.0` GitHub Release tarball (HTTPS) and Rust bindings from `tempgrpcd-protos` on `withforesight000/protobuf-rust` (HTTPS).
+
+The TypeScript protobuf package is distributed at:
+
+- [tempgrpcd-protos v0.1.0](https://github.com/withforesight000/protobuf-ts/releases/tag/tempgrpcd-protos-v0.1.0)
+- Artifact: `tempgrpcd-protos-0.1.0.tgz`
+- SHA-256: `83362b5dc105f944f4c9a375129caf76b1741154c11f4cca6cb7576c10a6dacf`
+- Source commit: `42916f2ccc7babfe1799ae16ae2193c18bb206a1` (see the release's `provenance.json`).
+
+When updating this package, verify the artifact against `SHA256SUMS`, review its provenance and generated-code changes, update the exact release URL and lockfile, and run type checks, build, and the WebDriver suite. Release assets can be replaced; the checksum and lockfile integrity pin their contents.
 
 ## Requirements
 
-- Node.js 24.16.0 (the version used in local checks and CI; Node.js 24 is used by the WebDriver container).
-- pnpm 12.11.2 (`corepack enable` recommended).
+- Bun 1.4.3 (pinned in `.bun-version` and `package.json`; Node.js/npm/pnpm are not required for application tooling).
 - Rust toolchain (`rustup`) and the platform prerequisites listed in the [Tauri 2 documentation](https://v2.tauri.app/start/).
-- Git access to GitHub (`withforesight000/protobuf-ts` and `withforesight000/protobuf-rust`) for fetching the shared proto packages.
+- HTTPS access to GitHub Releases for the TypeScript proto package and Git access to `withforesight000/protobuf-rust` for the Rust proto package.
 - A reachable `tempgrpcd` gRPC server that supports TLS and bearer-token authentication.
+
+Install the pinned Bun version through your version manager, or use the official installer:
+
+```bash
+curl -fsSL https://bun.com/install | bash -s "bun-v$(cat .bun-version)"
+bun --version
+```
+
+`bunfig.toml` forces Bun for Node-shebang tools, uses isolated dependency linking, and applies a 24-hour minimum release age to new registry resolutions. Only `protobufjs`, `sharp`, and `unrs-resolver` install scripts are trusted. Commit `bun.lock` alongside dependency changes; retain both TypeScript aliases and review peer resolutions when updating. The protobuf generator's `@typescript/vfs` retains its TypeScript 5.4.5 peer through `@bufbuild/protoplugin`, while Next.js/ESLint use the TypeScript 6 alias.
+
+Local untracked version-manager configuration may override the documented tools; configure Bun 1.4.3 locally without relying on Node or pnpm. GitHub JavaScript actions use the runner's own Node runtime, independently of application tooling.
 
 ## Quick Start
 
 ```bash
 # install dependencies
-pnpm install
+bun install --frozen-lockfile
 
 # run the Next.js dev server and Tauri shell together
-pnpm tauri dev
+bun --bun run tauri dev
 ```
 
 ## Testing
@@ -50,12 +69,17 @@ Make sure the appropriate native driver is available on `PATH` (WebKitWebDriver 
 
 #### Running the suite inside Docker (macOS)
 
-`tauri-driver` is not supported natively on macOS, so run the tests inside the Linux container defined at `docker/webdriver.Dockerfile`. The image bundles Node.js, Rust, `tauri-driver`, and `webkit2gtk-driver`, and the helper script runs `xvfb` so the WebView can start headlessly:
+`tauri-driver` is not supported natively on macOS, so run the tests inside the Linux container defined at `docker/webdriver.Dockerfile`. The image bundles Bun, Rust, `tauri-driver`, and `webkit2gtk-driver`, and the helper script runs `xvfb` so the WebView can start headlessly:
 
 ```bash
-docker build --target base -t roomtemp-webdriver -f docker/webdriver.Dockerfile .
+docker build --build-arg BUN_VERSION="$(cat .bun-version)" --target base -t roomtemp-webdriver -f docker/webdriver.Dockerfile .
 docker run --rm -it \
   -v "$PWD":/workspace \
+  -v roomtemp-bun-node:/workspace/node_modules \
+  -v roomtemp-bun-target:/workspace/src-tauri/target \
+  -v roomtemp-bun-next:/workspace/.next \
+  -v roomtemp-bun-cache:/root/.bun/install/cache \
+  -e CI=true -e NEXT_TELEMETRY_DISABLED=1 \
   -w /workspace \
   roomtemp-webdriver \
   ./docker/run-webdriver.sh
@@ -64,18 +88,18 @@ docker run --rm -it \
 Run the suite through the helper script:
 
 ```bash
-pnpm test:e2e
+bun --bun run test:e2e
 ```
 
-`pnpm test:e2e` will build the Tauri app with the mock flag, start `tauri-driver` on port 4444, and execute the Mocha test harness through Selenium.
+`bun --bun run test:e2e` will build the Tauri app with the mock flag, start `tauri-driver` on port 4444, and execute the Mocha test harness through Selenium.
 
 ### Rust unit tests & coverage
 
-Rust unit tests live under `src-tauri`. Convenient npm scripts have been added for running them from the repository root:
+Rust unit tests live under `src-tauri`. Package scripts are available for running them from the repository root:
 
 ```bash
-pnpm test:rust           # runs `cd src-tauri && cargo test`
-pnpm test:rust:coverage  # runs `cd src-tauri && cargo llvm-cov --workspace --lcov --output-path lcov.info`
+bun --bun run test:rust           # runs `cd src-tauri && cargo test`
+bun --bun run test:rust:coverage  # runs `cd src-tauri && cargo llvm-cov --workspace`
 ```
 
 If you want a quick human-readable coverage output on stdout, run:
@@ -87,33 +111,33 @@ cargo llvm-cov --workspace --text --show-missing-lines
 
 Note: `cargo-llvm-cov` is required; install it with `cargo install cargo-llvm-cov` if not already available.
 
-`pnpm tauri dev` automatically runs the Next.js development server defined in the Tauri configuration and opens the Tauri window once the frontend is ready.
+`bun --bun run tauri dev` automatically runs the Next.js development server defined in the Tauri configuration and opens the Tauri window once the frontend is ready.
 
 ### Linting
 
-`pnpm run lint` runs TypeScript 7 and TypeScript 6 compatibility checks, followed by ESLint.
+`bun --bun run lint` runs TypeScript 7 and TypeScript 6 compatibility checks, followed by ESLint.
 
 Run all frontend checks:
 
 ```bash
-pnpm run lint
+bun --bun run lint
 ```
 
 To run ESLint directly, use:
 
 ```bash
-pnpm run lint:eslint
+bun --bun run lint:eslint
 ```
 
 TypeScript 7 provides the `tsc` command through the `@typescript/native` alias. The
 `typescript` alias provides the TypeScript 6 API required by Next.js and
-typescript-eslint, and `tsc6` powers `pnpm run typecheck:compat`. ESLint stays on
+typescript-eslint, and `tsc6` powers `bun --bun run typecheck:compat`. ESLint stays on
 the latest compatible 9.x release because eslint-plugin-react does not yet
 support ESLint 10. Neither lint rules nor build-time type checking are disabled.
 
 ### Configure the gRPC endpoint
 
-1. Launch the app with `pnpm tauri dev`.
+1. Launch the app with `bun --bun run tauri dev`.
 2. Open **Settings** (top-right icon or navigate to `/settings`).
 3. Provide the gRPC URL, access token, and optional proxy URL.
 4. Click **Update** to save and trigger a reconnect with the new credentials.
@@ -124,10 +148,10 @@ Desktop builds embed the static Next.js output inside the Tauri shell, while mob
 
 ```bash
 # Desktop installers (macOS, Windows, Linux)
-pnpm tauri build
+bun --bun run tauri build
 
 # Android debug build / deploy (requires Android SDK)
-pnpm tauri android dev
+bun --bun run tauri android dev
 ```
 
 Consult the Tauri mobile documentation for iOS setup; configuration entries are already present for mobile capability profiles.
