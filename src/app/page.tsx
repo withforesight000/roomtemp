@@ -8,13 +8,14 @@ import { DateTimePicker24h } from "@/components/ui/expansions/datetime-picker";
 import { useFrontend } from "@/interfaces/react/contexts/grpcRepoContext";
 
 export default function Home() {
-  const { operations, now, state, connectionFailed } = useFrontend();
+  const frontend = useFrontend();
+  const { operations, now } = frontend;
   const referenceTime = now();
   const [start, setStart] = useState<Date>(
     new Date(referenceTime - 6 * 60 * 60 * 1000)
   ); // 6 hours ago
   const [end, setEnd] = useState<Date>(new Date(referenceTime));
-  const { data, fetch, loading, error, hasFetched, ready } = useGraphData(operations, state, connectionFailed);
+  const { data, fetch, loading, error, hasFetched, ready } = useGraphData(operations, frontend);
 
   return (
     <div>

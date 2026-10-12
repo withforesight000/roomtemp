@@ -29,10 +29,10 @@ export default function SettingsPage() {
   const saveSettings = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (connectionState.isSaving) return;
-    beginSave();
+    const token = beginSave();
+    if (!token) return;
     const saved = await save();
-    finishSave(saved);
-    if (saved) await connect();
+    if (finishSave(saved, token) && saved) await connect();
   };
 
   useEffect(() => {

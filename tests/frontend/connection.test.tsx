@@ -7,8 +7,8 @@ import { deferred, operations } from "./helpers";
 test("a late connection failure cannot replace a newer success", async () => {
   const older = deferred<void>();
   let calls = 0;
-  const api = operations({ connect: () => ++calls === 1 ? older.promise : Promise.resolve() });
-  const { result } = renderHook(() => useGrpcConnect(api, "Connected to gRPC server"));
+  const api = operations({ connect: () => ++calls === 2 ? older.promise : Promise.resolve() });
+  const { result } = renderHook(() => useGrpcConnect(api));
   let pending!: Promise<boolean>;
   act(() => { pending = result.current.connect(); });
   await act(async () => { await result.current.connect(); });
@@ -18,11 +18,11 @@ test("a late connection failure cannot replace a newer success", async () => {
 test("failed settings persistence preserves readiness without reconnecting", async () => {
   let calls = 0;
   const api = operations({ connect: async () => { calls++; } });
-  const { result } = renderHook(() => useGrpcConnect(api, "Connected to gRPC server"));
+  const { result } = renderHook(() => useGrpcConnect(api));
   await act(async () => { await result.current.connect(); });
   const generation = result.current.state.generation;
-  act(() => { result.current.beginSave(); result.current.finishSave(false); });
+  act(() => { const token = result.current.beginSave(); if (token) result.current.finishSave(false, token); });
   expect(result.current.state.phase).toBe("ready");
   expect(result.current.state.generation).toBe(generation);
-  expect(calls).toBe(1);
+  expect(calls).toBe(2);
 });

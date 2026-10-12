@@ -1,72 +1,77 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useReducer, useRef } from "react";
 import type { FrontendOperations } from "@/usecases/frontendOperations";
-import { OperationFailure, operationFailure } from "@/usecases/operationError";
-import { presentOperationError } from "@/interfaces/presenters/errorPresenter";
+import { type OperationFailure, operationFailure } from "@/usecases/operationError";
+import { connectionReducer, initialConnectionState } from "../state/connection";
 
-export type ConnectionState = {
-  phase: "idle" | "checking" | "ready" | "error";
-  status: string;
-  generation: number;
-  isSaving: boolean;
+export type SessionSnapshot = {
+  generation: number; graphEpoch: number; lifecycle: number;
+  ready: boolean; saving: boolean; active: boolean;
 };
+export type SaveToken = { id: number; lifecycle: number };
+export type ConnectionSession = ReturnType<typeof useGrpcConnect>;
 
-export const initialConnectionState: ConnectionState = {
-  phase: "idle", status: "Disconnected", generation: 0, isSaving: false,
-};
-
-export function useGrpcConnect(operations: FrontendOperations, connectedMessage: string) {
-  const [state, setState] = useState(initialConnectionState);
-  const current = useRef(state);
-  const mounted = useRef(true);
-
-  const update = useCallback((next: ConnectionState) => {
-    current.current = next;
-    if (mounted.current) setState(next);
-  }, []);
-
+export function useGrpcConnect(operations: FrontendOperations) {
+  const [state, dispatch] = useReducer(connectionReducer, initialConnectionState);
+  // This admission guard contains only operational identity/availability, never UI data or messages.
+  const gate = useRef<SessionSnapshot>({ generation: 0, graphEpoch: 0, lifecycle: 0, ready: false, saving: false, active: true });
+  const saveId = useRef(0);
+  const snapshot = useCallback((): SessionSnapshot => ({ ...gate.current }), []);
   const connect = useCallback(async (): Promise<boolean> => {
-    if (current.current.isSaving) return false;
-    const generation = current.current.generation + 1;
-    update({ phase: "checking", status: "Checking gRPC connection…", generation, isSaving: false });
+    const session = gate.current;
+    if (!session.active || session.saving) return false;
+    const generation = ++session.generation;
+    const lifecycle = session.lifecycle;
+    session.ready = false;
+    session.graphEpoch++;
+    dispatch({ type: "checking", generation, graphEpoch: session.graphEpoch });
+    const current = () => session.active && session.lifecycle === lifecycle && session.generation === generation;
     try {
       await operations.connect();
-      const status = connectedMessage;
-      if (!mounted.current || current.current.generation !== generation) return false;
-      update({ ...current.current, phase: "ready", status });
+      if (!current()) return false;
+      session.ready = true;
+      dispatch({ type: "ready", generation });
       return true;
-    } catch (error: unknown) {
-      if (!mounted.current || current.current.generation !== generation) return false;
+    } catch (error) {
+      if (!current()) return false;
       const failure = operationFailure(error);
-      if (failure.code === "superseded") {
-        update({ ...current.current, phase: "idle", status: "Disconnected" });
-        return false;
-      }
-      update({ ...current.current, phase: "error", status: presentOperationError(failure) });
+      dispatch(failure.code === "superseded" ? { type: "cancelled", generation }
+        : { type: "failed", generation, error: failure.code });
       return false;
     }
-  }, [operations, connectedMessage, update]);
+  }, [operations]);
 
-  const beginSave = useCallback(() => {
-    update({ ...current.current, isSaving: true });
-  }, [update]);
-
-  const finishSave = useCallback((saved: boolean) => {
-    update(saved
-      ? { phase: "idle", status: "Disconnected", generation: current.current.generation + 1, isSaving: false }
-      : { ...current.current, isSaving: false });
-  }, [update]);
-
-  const connectionFailed = useCallback((error: OperationFailure, generation: number) => {
-    if (current.current.generation !== generation) return;
-    update({ ...current.current, phase: "error", status: presentOperationError(error), generation: generation + 1 });
-  }, [update]);
-
-  // The provider calls these around its startup effect, including Strict Mode remounts.
-  const activate = useCallback(() => { mounted.current = true; }, []);
-  const deactivate = useCallback(() => {
-    mounted.current = false;
-    current.current = { ...current.current, generation: current.current.generation + 1 };
+  const beginSave = useCallback((): SaveToken | null => {
+    const session = gate.current;
+    if (!session.active || session.saving) return null;
+    session.saving = true;
+    session.graphEpoch++;
+    dispatch({ type: "saveStarted", graphEpoch: session.graphEpoch });
+    return { id: ++saveId.current, lifecycle: session.lifecycle };
   }, []);
-
-  return { state, connect, beginSave, finishSave, connectionFailed, activate, deactivate };
+  const finishSave = useCallback((saved: boolean, token: SaveToken): boolean => {
+    const session = gate.current;
+    if (!session.active || session.lifecycle !== token.lifecycle || token.id !== saveId.current) return false;
+    session.saving = false;
+    if (saved) { session.generation++; session.graphEpoch++; session.ready = false; }
+    dispatch({ type: "saveFinished", saved, generation: session.generation, graphEpoch: session.graphEpoch });
+    return true;
+  }, []);
+  const connectionFailed = useCallback((error: OperationFailure, generation: number) => {
+    const session = gate.current;
+    if (!session.active || session.saving || session.generation !== generation) return;
+    session.ready = false;
+    session.generation++;
+    session.graphEpoch++;
+    dispatch({ type: "invalidated", generation: session.generation, graphEpoch: session.graphEpoch, error: error.code });
+  }, []);
+  useEffect(() => {
+    gate.current.active = true;
+    void connect();
+    return () => {
+      gate.current.active = false;
+      gate.current.lifecycle++;
+      gate.current.graphEpoch++;
+    };
+  }, [connect]);
+  return { state, snapshot, connect, beginSave, finishSave, connectionFailed };
 }
