@@ -1,39 +1,24 @@
 "use client";
+import { createContext, useContext, useMemo, type ReactNode } from "react";
+import { createFrontendServices, type FrontendServices } from "@/frameworks/frontendServices";
+import { useGrpcConnect } from "../hooks/useGrpcConnect";
+import { useSettingsWorkflow } from "../hooks/useSettingsWorkflow";
 
-import React, { createContext, useMemo, useEffect } from "react";
-import { GrpcRepository, GrpcRepositoryImpl } from "@/interfaces/repositories/grpc";
-import { GrpcError } from "@/domain/grpcError";
-import { ConnectionState, initialConnectionState, useGrpcConnect } from "../hooks/useGrpcConnect";
-
-export interface GrpcContextValue {
-  grpcRepo: GrpcRepository;
-  connect: () => Promise<boolean>;
-  state: ConnectionState;
-  beginSave: () => void;
-  finishSave: (_saved: boolean) => void;
-  connectionFailed: (_error: GrpcError, _generation: number) => void;
+type Connection = ReturnType<typeof useGrpcConnect>;
+export type GrpcContextValue = FrontendServices & Pick<Connection,
+  "state" | "snapshot" | "connect" | "connectionFailed"> & { saveSettings: ReturnType<typeof useSettingsWorkflow> };
+const GrpcRepoContext = createContext<GrpcContextValue | null>(null);
+export function useFrontend() {
+  const value = useContext(GrpcRepoContext);
+  if (!value) throw new Error("useFrontend requires GrpcRepoProvider");
+  return value;
 }
-
-const dummy: GrpcContextValue = {
-  grpcRepo: new GrpcRepositoryImpl(), connect: async () => false,
-  state: initialConnectionState, beginSave: () => {}, finishSave: () => {},
-  connectionFailed: () => {},
-};
-
-export const GrpcRepoContext = createContext<GrpcContextValue>(dummy);
-
-export function GrpcRepoProvider({ children }: { children: React.ReactNode }) {
-  const grpcRepo = useMemo(() => new GrpcRepositoryImpl(), []);
-  const { state, connect, beginSave, finishSave, connectionFailed, activate, deactivate } = useGrpcConnect(grpcRepo);
-  useEffect(() => {
-    activate();
-    void connect();
-    return deactivate;
-  }, [connect, activate, deactivate]);
-
-  return (
-    <GrpcRepoContext.Provider value={{ grpcRepo, connect, state, beginSave, finishSave, connectionFailed }}>
-      {children}
-    </GrpcRepoContext.Provider>
-  );
+export function GrpcRepoProvider({ children, services: provided }: { children: ReactNode; services?: FrontendServices }) {
+  const services = useMemo(() => provided ?? createFrontendServices(), [provided]);
+  const connection = useGrpcConnect(services.operations);
+  const saveSettings = useSettingsWorkflow(services.operations, connection);
+  return <GrpcRepoContext.Provider value={{ ...services, state: connection.state, snapshot: connection.snapshot,
+    connect: connection.connect, connectionFailed: connection.connectionFailed, saveSettings }}>
+    {children}
+  </GrpcRepoContext.Provider>;
 }

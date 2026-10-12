@@ -1,63 +1,60 @@
-import { useEffect, useRef, useState } from "react";
-import { FetchGraphData } from "@/usecases/fetchGraphData";
-import { GrpcRepository } from "@/interfaces/repositories/grpc";
-import { presentGraphData, RechartPoint } from "@/interfaces/presenters/graphPresenter";
-import { ConnectionState } from "./useGrpcConnect";
-import { GrpcError, invalidatesConnection, normalizeGrpcError } from "@/domain/grpcError";
+import { useCallback, useEffect, useReducer, useRef } from "react";
+import type { FrontendOperations } from "@/usecases/frontendOperations";
+import { invalidatesConnection, operationFailure } from "@/usecases/operationError";
+import { presentGraphData } from "@/interfaces/presenters/graphPresenter";
+import { presentOperationError } from "@/interfaces/presenters/errorPresenter";
+import { graphReducer, initialGraphState } from "../state/graph";
+import type { ConnectionSession } from "./useGrpcConnect";
 
-export function useGraphData(
-  grpcRepo: GrpcRepository, connection: ConnectionState,
-  connectionFailed: (_error: GrpcError, _generation: number) => void,
-) {
-  const [resultGeneration, setResultGeneration] = useState(-1);
-  const [data, setData] = useState<RechartPoint[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [hasFetched, setHasFetched] = useState(false);
+export function useGraphData(operations: Pick<FrontendOperations, "fetchGraphData">, connection: Pick<ConnectionSession, "state" | "snapshot" | "connectionFailed">) {
+  const [state, dispatch] = useReducer(graphReducer, initialGraphState);
   const request = useRef(0);
-  const current = useRef(connection);
-  current.current = connection;
-  const ready = connection.phase === "ready" && !connection.isSaving;
-
+  const busy = useRef<number | null>(null);
+  const { generation, graphEpoch, phase, isSaving } = connection.state;
+  const { snapshot, connectionFailed } = connection;
+  const ready = phase === "ready" && !isSaving;
   useEffect(() => {
-    setResultGeneration(ready ? connection.generation : -1);
-    request.current += 1;
-    setData([]);
-    setError(null);
-    setHasFetched(false);
-    setLoading(false);
-    return () => { request.current += 1; };
-  }, [connection.generation, ready]);
+    busy.current = null;
+    dispatch({ type: "reset", generation, graphEpoch, request: ++request.current });
+    return () => { request.current++; busy.current = null; };
+  }, [generation, graphEpoch]);
 
-  const fetch = async (startDate: Date, endDate: Date) => {
-    if (!ready || loading) return;
+  const fetch = useCallback(async (start: Date, end: Date) => {
+    const session = snapshot();
+    if (!session.active || !session.ready || session.saving || busy.current !== null ||
+        session.generation !== generation || session.graphEpoch !== graphEpoch) return;
     const id = ++request.current;
-    const generation = connection.generation;
-    const active = () => request.current === id &&
-      current.current.generation === generation &&
-      current.current.phase === "ready" && !current.current.isSaving;
-    setResultGeneration(generation);
-    setLoading(true);
-    setError(null);
-    setData([]);
-    setHasFetched(false);
+    busy.current = id;
+    const identity = { generation, graphEpoch, request: id };
+    const active = () => {
+      const latest = snapshot();
+      return request.current === id && latest.active && latest.ready && !latest.saving &&
+        latest.generation === generation && latest.graphEpoch === graphEpoch && latest.lifecycle === session.lifecycle;
+    };
+    dispatch({ type: "started", ...identity });
     try {
-      const response = await new FetchGraphData(grpcRepo).execute(startDate, endDate);
+      const response = await operations.fetchGraphData(start, end);
       if (!active()) return;
-      setData(presentGraphData(response));
-      setHasFetched(true);
-    } catch (failure: unknown) {
+      dispatch({ type: "succeeded", ...identity, data: presentGraphData(response) });
+    } catch (error) {
+      const failure = operationFailure(error);
+      // Backend invalidation outlives this graph view; the session checks its generation.
+      if (invalidatesConnection(failure)) {
+        connectionFailed(failure, generation);
+        return;
+      }
       if (!active()) return;
-      const err = normalizeGrpcError(failure);
-      if (err.code === "superseded") return;
-      setError(err.message);
-      if (invalidatesConnection(err)) connectionFailed(err, generation);
+      if (failure.code === "superseded") dispatch({ type: "cancelled", ...identity });
+      else dispatch({ type: "failed", ...identity, error: failure.code });
     } finally {
-      if (active()) setLoading(false);
+      if (busy.current === id) busy.current = null;
     }
+  }, [operations, snapshot, generation, graphEpoch, connectionFailed]);
+  const visible = ready && state.generation === generation && state.graphEpoch === graphEpoch;
+  return {
+    data: visible && state.phase === "success" ? state.data : [], fetch,
+    loading: visible && state.phase === "loading", ready,
+    error: visible && state.phase === "error" ? presentOperationError({ code: state.error }) : null,
+    hasFetched: visible && state.phase === "success",
   };
-
-  const visible = ready && resultGeneration === connection.generation;
-  return { data: visible ? data : [], fetch, loading: visible && loading,
-    error: visible ? error : null, hasFetched: visible && hasFetched, ready };
 }

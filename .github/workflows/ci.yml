@@ -4,7 +4,6 @@ on:
   push:
     branches: [ main, master ]
   pull_request:
-    branches: [ main, master ]
 
 jobs:
   frontend-e2e:
@@ -82,6 +81,11 @@ jobs:
           export PATH="$ROOMTEMP_TOOL_PATH"
           bun --bun run lint:biome
 
+      - name: Run frontend unit and Hook tests
+        run: |
+          export PATH="$ROOMTEMP_TOOL_PATH"
+          bun --bun run test:frontend
+
       - uses: cargo-bins/cargo-binstall@main
 
       - name: Install tauri-driver via cargo-binstall
@@ -92,6 +96,9 @@ jobs:
           CI: true
           NEXT_TELEMETRY_DISABLED: 1
         run: |
+          # The native driver is installed after the application tool directory is prepared.
+          native_driver="$(command -v WebKitWebDriver)"
+          ln -s "$native_driver" "${ROOMTEMP_TOOL_PATH%%:*}/WebKitWebDriver"
           export PATH="$ROOMTEMP_TOOL_PATH"
           xvfb-run -a bun --bun run test:e2e
   rust-tests:

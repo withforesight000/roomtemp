@@ -1,7 +1,6 @@
 "use client";
 
-import React, { useContext, useEffect, useMemo } from "react";
-import { SettingsRepositoryImpl } from "@/interfaces/repositories/settings";
+import type React from "react";
 import { useSettings } from "@/interfaces/react/hooks/useSettings";
 import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -15,35 +14,20 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { GrpcRepoContext } from "@/interfaces/react/contexts/grpcRepoContext";
+import { useFrontend } from "@/interfaces/react/contexts/grpcRepoContext";
 import { Checkbox } from "@/components/ui/checkbox";
 
 export default function SettingsPage() {
-  const settingsRepo = useMemo(() => new SettingsRepositoryImpl(), []);
-  const { connect, state: connectionState, beginSave, finishSave } = useContext(GrpcRepoContext);
-  const {
-    state: settingsState,
-    dispatch,
-    load,
-    save,
-  } = useSettings(settingsRepo);
-
-  const saveSettings = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (connectionState.isSaving) return;
-    beginSave();
-    const saved = await save();
-    finishSave(saved);
-    if (saved) await connect();
+  const { operations, saveSettings, state: connectionState } = useFrontend();
+  const { state: settingsState, setField, save } = useSettings(operations, saveSettings);
+  const submit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    void save();
   };
-
-  useEffect(() => {
-    load();
-  }, [load]);
 
   return (
     <Card className="w-full">
-      <form onSubmit={saveSettings}>
+      <form onSubmit={submit}>
         <CardHeader className="my-4">
           <CardTitle>Settings</CardTitle>
         </CardHeader>
@@ -59,40 +43,34 @@ export default function SettingsPage() {
                 <Input
                   id="name"
                   placeholder="https://example.com/grpc"
-                  value={settingsState.url}
+                  value={settingsState.values.url}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                    dispatch({
-                      type: "SET_FIELD",
-                      payload: { ...settingsState, url: e.currentTarget.value },
-                    });
+                    setField({ field: "url", value: e.currentTarget.value });
                   }}
                 />
                 <div className="flex flex-col ml-4 mt-1.5 mb-8 space-y-1.5">
                   <div className="flex flex-row items-center space-x-2 space-y-1.5">
                     <Checkbox
                       id="use-proxies"
-                      checked={settingsState.useProxies}
+                      checked={settingsState.values.useProxies}
                       onCheckedChange={(checked: boolean) => {
-                        dispatch({
-                          type: "SET_FIELD",
-                          payload: { ...settingsState, useProxies: checked },
-                        });
+                        setField({ field: "useProxies", value: checked });
                       }}
                     />
                     <Label htmlFor="use-proxies">Use a Proxy Server</Label>
                   </div>
                   <div
                     className={`ml-6 space-y-1.5 transition-opacity duration-150 ${
-                      settingsState.useProxies
+                      settingsState.values.useProxies
                         ? "opacity-100"
                         : "opacity-50 pointer-events-none"
                     }`}
-                    aria-disabled={!settingsState.useProxies}
+                    aria-disabled={!settingsState.values.useProxies}
                   >
                     <Label
                       htmlFor="proxy_url"
                       className={
-                        settingsState.useProxies ? "" : "text-muted-foreground"
+                        settingsState.values.useProxies ? "" : "text-muted-foreground"
                       }
                     >
                       Proxy URL
@@ -103,16 +81,10 @@ export default function SettingsPage() {
                     <Input
                       id="proxy_url"
                       placeholder="http://proxy.example.com:8080"
-                      value={settingsState.proxyUrl}
-                      disabled={!settingsState.useProxies}
+                      value={settingsState.values.proxyUrl}
+                      disabled={!settingsState.values.useProxies}
                       onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                        dispatch({
-                          type: "SET_FIELD",
-                          payload: {
-                            ...settingsState,
-                            proxyUrl: e.currentTarget.value,
-                          },
-                        });
+                        setField({ field: "proxyUrl", value: e.currentTarget.value });
                       }}
                     />
                   </div>
@@ -128,15 +100,9 @@ export default function SettingsPage() {
                   id="access-token"
                   placeholder="Your Access Token"
                   type="password"
-                  value={settingsState.accessToken}
+                  value={settingsState.values.accessToken}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                    dispatch({
-                      type: "SET_FIELD",
-                      payload: {
-                        ...settingsState,
-                        accessToken: e.currentTarget.value,
-                      },
-                    });
+                    setField({ field: "accessToken", value: e.currentTarget.value });
                   }}
                 />
               </div>

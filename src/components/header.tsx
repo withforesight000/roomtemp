@@ -1,13 +1,13 @@
 "use client";
 
-import { GrpcRepoContext } from "@/interfaces/react/contexts/grpcRepoContext";
+import { presentConnection } from "@/interfaces/presenters/connectionPresenter";
+import { useFrontend } from "@/interfaces/react/contexts/grpcRepoContext";
 import { CircleCheck, CircleX, Home, MoveLeft, Settings } from "lucide-react";
-import { useContext } from "react";
 import { Card, CardContent } from "./ui/card";
 import { usePathname, useRouter } from "next/navigation";
 
 export function Header() {
-  const { state: grpcConnectState, connect } = useContext(GrpcRepoContext);
+  const { state: grpcConnectState, connect, connectedMessage } = useFrontend();
   const pathname = usePathname();
   const router = useRouter();
   const showBackButton = pathname !== "/";
@@ -29,7 +29,7 @@ export function Header() {
         <CardContent className="flex items-center justify-center min-h-10 py-2">
           <div role="status" aria-live="polite" className="flex flex-col items-center gap-2">
             <p className="flex items-center gap-2">
-              {grpcConnectState.isSaving ? "Saving settings…" : grpcConnectState.status}
+              {presentConnection(grpcConnectState, connectedMessage)}
               {!grpcConnectState.isSaving && grpcConnectState.phase === "ready" && <CircleCheck className="h-4 w-4 shrink-0 text-green-500" />}
               {!grpcConnectState.isSaving && grpcConnectState.phase === "error" && <CircleX className="h-4 w-4 shrink-0 text-red-500" />}
             </p>
