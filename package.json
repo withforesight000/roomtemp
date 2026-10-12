@@ -8,10 +8,9 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "lint:eslint": "eslint \"src/**/*.{ts,tsx,js,jsx}\" --max-warnings=20",
-    "lint": "pnpm run typecheck && pnpm run typecheck:compat && pnpm run lint:eslint",
-    "lint:next": "cd src && node ../node_modules/next/dist/bin/next lint",
+    "lint": "bun --bun run typecheck && bun --bun run typecheck:compat && bun --bun run lint:eslint",
     "tauri": "tauri",
-    "test:e2e": "pnpm run webdriver:e2e",
+    "test:e2e": "bun --bun run webdriver:e2e",
     "test:rust": "(cd src-tauri && cargo test)",
     "test:rust:coverage": "(cd src-tauri && cargo llvm-cov --workspace)",
     "webdriver:e2e": "mocha src-tauri/webdriver/test/test.js",
@@ -40,7 +39,6 @@
     "date-fns": "^4.4.0",
     "lucide-react": "^1.55.0",
     "next": "16.4.0",
-    "pnpm": "^12.11.2",
     "protobufjs": "^8.8.0",
     "react": "^19.3.0",
     "react-day-picker": "^10.0.2",
@@ -70,5 +68,10 @@
     "typescript": "npm:@typescript/typescript6@^6.0.2",
     "@typescript/native": "npm:typescript@^7.0.2"
   },
-  "packageManager": "pnpm@12.11.2"
+  "packageManager": "bun@1.4.3",
+  "trustedDependencies": [
+    "protobufjs",
+    "sharp",
+    "unrs-resolver"
+  ]
 }
